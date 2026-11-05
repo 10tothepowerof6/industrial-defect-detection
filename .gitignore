@@ -1,0 +1,66 @@
+# Local datasets, downloads, and archives
+/datasets/**
+!/datasets/.gitkeep
+/data/
+*.zip
+*.tar
+*.tar.gz
+*.tgz
+*.7z
+*.rar
+*.crdownload
+*.part
+
+# Generated models, experiment logs, and predictions
+/artifacts/**
+!/artifacts/.gitkeep
+/outputs/**
+!/outputs/.gitkeep
+/results/
+/runs/
+/lightning_logs/
+/wandb/
+/mlruns/
+*.ckpt
+*.pt
+*.pth
+*.onnx
+*.safetensors
+*.pkl
+*.joblib
+events.out.tfevents.*
+
+# Python environments, caches, and packaging
+.venv/
+venv/
+env/
+__pycache__/
+*.py[cod]
+*.egg-info/
+build/
+dist/
+.pytest_cache/
+.ruff_cache/
+.mypy_cache/
+.cache/
+.coverage
+htmlcov/
+.ipynb_checkpoints/
+
+# Credentials and local settings
+.env
+.env.*
+!.env.example
+kaggle.json
+.kaggle/
+.streamlit/secrets.toml
+.vscode/
+.idea/
+
+# OS and temporary files
+.DS_Store
+Thumbs.db
+Desktop.ini
+*.log
+*.tmp
+*.swp

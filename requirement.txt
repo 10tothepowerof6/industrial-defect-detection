@@ -1,0 +1,33 @@
+# Local baseline: standard CPython 3.11.9 (64-bit) on Windows.
+# Install the appropriate PyTorch backend first; see README.md.
+# Core model packages are pinned. Supporting dependencies use bounded ranges.
+torch==2.10.0
+torchvision==0.25.0
+anomalib==2.7.0
+segmentation-models-pytorch==0.5.0
+
+# Training, pretrained backbones, and metrics
+lightning>=2.6,<3,!=2.6.2,!=2.6.3
+torchmetrics>=1.8.2,<2
+timm>=1.0,<2
+numpy>=2.0,<3
+scipy>=1.14,<2
+scikit-learn>=1.5,<2
+
+# Images, analysis, and experiment configuration
+opencv-python-headless>=4.10,<5
+pillow>=10.4,<13
+pandas>=2.2,<3
+matplotlib>=3.9,<4
+PyYAML>=6.0.2,<7
+tqdm>=4.66,<5
+tensorboard>=2.18,<3
+
+# Interactive demo and notebooks
+streamlit>=1.40,<2
+jupyterlab>=4.3,<5
+ipykernel>=6.29,<8
+ipywidgets>=8.1,<9
+
+# Code quality
+ruff>=0.9,<1

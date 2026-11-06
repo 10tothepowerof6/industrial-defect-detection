@@ -10,8 +10,8 @@ evaluation results, and the Streamlit application are planned deliverables.
 
 | Track | Required models | Optional extension | Owner |
 | --- | --- | --- | --- |
-| Anomaly detection (primary, about 70% of effort) | PatchCore, EfficientAD | Dinomaly | Member A |
-| Supervised binary segmentation | U-Net with ImageNet-pretrained ResNet-18 encoder | SegFormer-B0 | Member B |
+| Anomaly detection (primary, about 70% of effort) | PatchCore, EfficientAD | Dinomaly | Triệu |
+| Supervised binary segmentation | U-Net with ImageNet-pretrained ResNet-18 encoder | SegFormer-B0 | Hùng |
 
 Train a separate model for each product category initially. Both tracks produce
 image-level decisions and spatial defect predictions. Compare known and held-out
@@ -40,7 +40,8 @@ industrial-defect-detection/
 |-- artifacts/                   # Local model artifacts (ignored)
 |-- outputs/                     # Local logs and generated results (ignored)
 |-- docs/
-|   `-- experiment-protocol.md
+|   |-- development-contract.md  # Shared interfaces and experiment rules
+|   `-- assignments/             # Work plans for Triệu and Hùng
 |-- requirement.txt
 `-- pyproject.toml
 ```
@@ -102,7 +103,7 @@ Place the extracted categories under `datasets/mvtec_ad/tile/` and
 `ground_truth/` subdirectories. Dataset files, downloaded archives,
 credentials, checkpoints, and generated runs are excluded from Git.
 
-Use the [experiment protocol](docs/experiment-protocol.md) before creating train,
+Use the [shared technical contract](docs/development-contract.md) before creating train,
 validation, or test splits. Official MVTec AD training images are normal only.
 Supervised experiments therefore require a documented custom split.
 
@@ -119,6 +120,11 @@ does not replace the original dataset attribution or terms. See the
 5. Integrate image inference into Streamlit and publish reproducible results.
 6. Evaluate Dinomaly first if additional time is available.
 
-Member A owns anomaly experiments and model selection. Member B owns supervised
-training, shared evaluation integration, and the demo. Both members review splits,
-failure cases, and final results.
+Triệu owns anomaly experiments, shared data, and inference integration. Hùng owns
+supervised training, shared evaluation, and the demo. Both review splits, failure
+cases, and final results. See the detailed work plans for
+[Triệu](docs/assignments/trieu.md) and [Hùng](docs/assignments/hung.md), including
+branch names, commit titles, PR titles, and handoff checklists.
+
+See the [workflow diagram](docs/workflow.md) for task dependencies, parallel work,
+and integration checkpoints.

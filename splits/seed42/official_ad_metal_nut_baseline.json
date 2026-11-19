@@ -1,0 +1,30 @@
+{
+  "schema_version": 1,
+  "seed": 42,
+  "category": "metal_nut",
+  "protocol": "official_ad",
+  "held_out_defect": "",
+  "manifest_sha256": "52bcce732d2bac521d96615f455b158fce60d540f8fd0fa6dca84eeb202c2033",
+  "dataset_image_inventory_sha256": "e1886ec812f6fef40471bdccfefa5eb21550f44b641151abb60b21c227817f8d",
+  "source": "MVTec AD via Kaggle ipythonx/mvtec-ad",
+  "rounding": "floor train, floor defect val, remainder test; good val is remainder",
+  "normal_ratios": {
+    "train": 0.8,
+    "val": 0.2
+  },
+  "known_defect_ratios": {
+    "train": 0.6,
+    "val": 0.2,
+    "test": 0.2
+  },
+  "counts": {
+    "test/bent": 25,
+    "test/color": 22,
+    "test/flip": 23,
+    "test/good": 22,
+    "test/scratch": 23,
+    "train/good": 176,
+    "val/good": 44
+  },
+  "review_status": "pending_hung_review"
+}

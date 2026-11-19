@@ -45,7 +45,7 @@ Các đường dẫn đều tính từ gốc repository.
 
 | Đường dẫn | Nội dung | Người chính |
 | --- | --- | --- |
-| `datasets/mvtec_ad/` | Dữ liệu gốc ở máy hoặc notebook runtime | Triệu |
+| `datasets/` | Root local hiện tại, chứa tile và metal_nut; truyền root khác qua CLI | Triệu |
 | `splits/` | CSV chia tập và metadata chia tập | Triệu |
 | `src/industrial_defect_detection/data/` | Đọc ảnh, mask, manifest, kiểm tra dữ liệu | Triệu |
 | `src/industrial_defect_detection/models/anomaly/` | Logic tích hợp PatchCore, EfficientAD | Triệu |
@@ -89,7 +89,7 @@ trong manifest đó. Ảnh có thể xuất hiện lại ở fold khác theo cá
 | Cột CSV | Ý nghĩa |
 | --- | --- |
 | `sample_id` | Định danh ổn định, dùng đường dẫn ảnh tương đối làm ID |
-| `image_path` | Đường dẫn tương đối từ `datasets/mvtec_ad/` |
+| `image_path` | Đường dẫn tương đối từ dataset root truyền qua CLI, local đang là `datasets/` |
 | `mask_path` | Đường dẫn mask tương đối, để trống với ảnh good |
 | `category` | `tile` hoặc `metal_nut` |
 | `defect_type` | `good` hoặc tên thư mục loại lỗi gốc |
@@ -159,8 +159,8 @@ riêng theo category. Các đường dẫn tương đối trong config tính t�
 Các lệnh dưới là giao diện đích. Mỗi PR tạo entry point phải cập nhật ví dụ chạy thật.
 
 ```powershell
-python scripts/audit_dataset.py --dataset-root datasets/mvtec_ad
-python scripts/create_splits.py --dataset-root datasets/mvtec_ad --seed 42
+python scripts/audit_dataset.py --dataset-root datasets
+python scripts/create_splits.py --dataset-root datasets --seed 42 --tile-held-out crack --metal-nut-held-out scratch
 python scripts/train_anomaly.py --config configs/anomaly/patchcore_tile.yaml
 python scripts/train_supervised.py --config configs/supervised/unet_resnet18_tile.yaml
 python scripts/calibrate.py --artifact-dir <artifact_dir> --dataset-root <dataset_root> --manifest <manifest_csv>
@@ -276,6 +276,11 @@ Dataset, artifacts và outputs đang được ignore. Mỗi lần bàn giao có 
 nhỏ tại `docs/results/` ghi link tải bộ artifact/output, SHA-256 gói tải, commit,
 manifest hash và lệnh tái hiện. Chốt nơi lưu chung trước M2, cả hai truy cập được.
 Thử load trên môi trường mới để phát hiện phụ thuộc weights nằm trong cache máy cũ.
+
+Ngày 19/11, Triệu xác nhận giữ riêng crack của tile và scratch của metal_nut cho
+hai fold đầu tiên. Manifest seed 42 dùng floor cho số train và val lỗi đã biết,
+phần dư vào test; normal val nhận phần dư sau 80% train. Review của Hùng còn chờ.
+Model và kết quả lớn bàn giao qua GitHub Releases theo lựa chọn của nhóm.
 
 ## 9. Branch, commit, PR và review
 

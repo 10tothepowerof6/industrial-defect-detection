@@ -3,8 +3,9 @@
 Visual inspection of **tile** and **metal nut** products from MVTec AD, with a
 primary focus on learning normal appearance and detecting anomalous regions.
 
-The project is currently at the repository setup stage. Training pipelines,
-evaluation results, and the Streamlit application are planned deliverables.
+Dataset auditing, image/mask reading, and reproducible split manifests are
+implemented. Training pipelines and the Streamlit application are planned
+deliverables.
 
 ## Scope
 
@@ -99,14 +100,42 @@ Dependency references are [Anomalib 2.7.0](https://pypi.org/project/anomalib/2.7
 
 ## Data
 
-Place the extracted categories under `datasets/mvtec_ad/tile/` and
-`datasets/mvtec_ad/metal_nut/`, preserving their original `train/`, `test/`, and
-`ground_truth/` subdirectories. Dataset files, downloaded archives,
+The current local dataset root is `datasets/`, containing `tile/` and
+`metal_nut/`. Preserve the original `train/`, `test/`, and `ground_truth/`
+subdirectories. The scripts accept a different root through `--dataset-root`.
+Dataset files, downloaded archives,
 credentials, checkpoints, and generated runs are excluded from Git.
 
 Use the [shared technical contract](docs/development-contract.md) before creating train,
 validation, or test splits. Official MVTec AD training images are normal only.
 Supervised experiments therefore require a documented custom split.
+
+Audit the dataset and create manifests using the confirmed held-out defect types.
+The commands refuse to overwrite an existing output directory.
+
+```powershell
+.\.venv\Scripts\python.exe scripts/check_environment.py
+.\.venv\Scripts\python.exe scripts/audit_dataset.py --dataset-root datasets
+.\.venv\Scripts\python.exe scripts/create_splits.py --dataset-root datasets --seed 42 --tile-held-out crack --metal-nut-held-out scratch
+```
+
+Audit output and previews are in `outputs/day19/audit/`. The four manifest CSVs
+and their metadata are in `splits/seed42/`. They include official AD splits and
+one held-out comparison per category. Metadata records the normal validation
+split, rounding rule, dataset image fingerprint, manifest hash, and pending peer
+review. Review the previews and splits with Hung before training.
+
+`load_sample` returns RGB uint8 images and binary uint8 masks. An optional size
+uses `(height, width)` and resizes masks with nearest-neighbor. No random
+augmentation or normalization is applied by this shared reader.
+
+Run the data checks from PowerShell without installing more packages.
+
+```powershell
+$env:PYTHONPATH = Join-Path (Get-Location) 'src'
+.\.venv\Scripts\python.exe -m unittest discover -s tests -v
+.\.venv\Scripts\python.exe -m ruff check src scripts tests
+```
 
 MVTec AD is provided by MVTec Software GmbH under CC BY-NC-SA 4.0. A Kaggle mirror
 does not replace the original dataset attribution or terms. See the

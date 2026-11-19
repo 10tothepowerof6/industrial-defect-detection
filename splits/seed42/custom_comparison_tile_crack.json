@@ -1,0 +1,39 @@
+{
+  "schema_version": 1,
+  "seed": 42,
+  "category": "tile",
+  "protocol": "custom_comparison",
+  "held_out_defect": "crack",
+  "manifest_sha256": "5766640a05cdc67468ea12c556554dd73e98a16a00953a3523d9d7d61406c9a3",
+  "dataset_image_inventory_sha256": "e1886ec812f6fef40471bdccfefa5eb21550f44b641151abb60b21c227817f8d",
+  "source": "MVTec AD via Kaggle ipythonx/mvtec-ad",
+  "rounding": "floor train, floor defect val, remainder test; good val is remainder",
+  "normal_ratios": {
+    "train": 0.8,
+    "val": 0.2
+  },
+  "known_defect_ratios": {
+    "train": 0.6,
+    "val": 0.2,
+    "test": 0.2
+  },
+  "counts": {
+    "test/crack": 17,
+    "test/glue_strip": 5,
+    "test/good": 33,
+    "test/gray_stroke": 4,
+    "test/oil": 5,
+    "test/rough": 3,
+    "train/glue_strip": 10,
+    "train/good": 184,
+    "train/gray_stroke": 9,
+    "train/oil": 10,
+    "train/rough": 9,
+    "val/glue_strip": 3,
+    "val/good": 46,
+    "val/gray_stroke": 3,
+    "val/oil": 3,
+    "val/rough": 3
+  },
+  "review_status": "pending_hung_review"
+}

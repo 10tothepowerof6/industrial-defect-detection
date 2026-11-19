@@ -63,30 +63,31 @@ Run these commands from the repository root using the chosen Python executable.
 .\.venv\Scripts\python.exe -m pip install --upgrade pip
 ```
 
-Choose one PyTorch backend before installing the remaining dependencies.
+The shared GPU baseline is **PyTorch 2.10.0 + CUDA 12.8** with
+**torchvision 0.25.0 + CUDA 12.8**, for the GTX 1650 and RTX 4050 used by the team.
+`requirement.txt` pins the `+cu128` builds and adds the official PyTorch package
+index. Both machines need a compatible NVIDIA driver. The CUDA runtime is
+provided by the PyTorch installation; a separate CUDA Toolkit is only needed for
+tasks such as compiling custom CUDA extensions.
 
-```powershell
-# NVIDIA GPU, including GTX 1650, with a compatible NVIDIA driver
-.\.venv\Scripts\python.exe -m pip install torch==2.10.0 torchvision==0.25.0 --index-url https://download.pytorch.org/whl/cu126
-
-# CPU alternative
-.\.venv\Scripts\python.exe -m pip install torch==2.10.0 torchvision==0.25.0 --index-url https://download.pytorch.org/whl/cpu
-```
-
-Then install project dependencies and the local package.
+Install project dependencies and the local package.
 
 ```powershell
 .\.venv\Scripts\python.exe -m pip install -r requirement.txt
 .\.venv\Scripts\python.exe -m pip install -e .
 .\.venv\Scripts\python.exe -m pip check
-.\.venv\Scripts\python.exe -c "import torch; print(torch.__version__); print('CUDA available:', torch.cuda.is_available())"
+.\.venv\Scripts\python.exe -c "import torch; assert torch.cuda.is_available(), 'CUDA unavailable'; x = torch.ones((32, 32), device='cuda'); y = x @ x; torch.cuda.synchronize(); assert torch.all(y == 32).item(); print('GPU computation PASS:', torch.__version__, torch.version.cuda, torch.cuda.get_device_name(0), y.device)"
 .\.venv\Scripts\python.exe -c "from anomalib.models import Patchcore, EfficientAd; import segmentation_models_pytorch; import industrial_defect_detection; print('Imports OK')"
 .\.venv\Scripts\python.exe -m ruff check src
 ```
 
+The GPU check must print `2.10.0+cu128`, CUDA `12.8`, the expected NVIDIA device,
+and `cuda:0`. Perform this check on each machine before training.
+
 On Linux/Colab/Kaggle, use the active environment's `python -m pip` commands
-instead of the Windows executable path. Check its Python version and select a
-compatible PyTorch backend. Restart the notebook kernel after changing PyTorch.
+instead of the Windows executable path. Check Python, NVIDIA driver, and CUDA
+wheel compatibility before installing. Restart the notebook kernel after changing
+PyTorch.
 
 The requirement file pins the core model packages and bounds supporting
 dependencies. It is not a complete environment lock. An installation and model

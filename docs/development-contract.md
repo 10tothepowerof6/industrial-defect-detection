@@ -180,6 +180,12 @@ Triệu tạo cấu trúc `Prediction` trong `inference/contracts.py`. Hùng dù
 trúc này cho U-Net và evaluator. Trước khi có model, dùng một prediction giả nhỏ
 để kiểm tra việc nối evaluator, overlay và app.
 
+Đã triển khai hai trạng thái riêng. `RawPrediction` chỉ có score, map và định danh
+để kiểm tra adapter trước calibration. `Prediction` có thêm hai ngưỡng, tính
+`is_defective` và `pred_mask` từ score bằng phép `>`. Phương thức `with_thresholds`
+chỉ áp dụng ngưỡng được truyền vào; việc chọn ngưỡng thuộc H03. Lệnh
+`python scripts/preview_prediction.py` tạo ví dụ tổng hợp có nhãn synthetic.
+
 | Trường | Quy ước |
 | --- | --- |
 | `image_score` | Số thực hữu hạn. Cao hơn nghĩa là đáng nghi hơn |

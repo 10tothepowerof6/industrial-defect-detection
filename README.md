@@ -7,6 +7,10 @@ Dataset auditing, image/mask reading, and reproducible split manifests are
 implemented. Training pipelines and the Streamlit application are planned
 deliverables.
 
+Shared raw/calibrated prediction objects and a synthetic integration example are
+available. See the [day 19 handoff](docs/day19-handoff.md) for audit results,
+manifest counts, commands, and the review items for Hung.
+
 ## Scope
 
 | Track | Required models | Optional extension | Owner |

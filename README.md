@@ -5,7 +5,7 @@ primary focus on learning normal appearance and detecting anomalous regions.
 
 Dataset auditing, image/mask reading, and reproducible split manifests are
 implemented. A good-only PatchCore fit/load pipeline, shared calibration/evaluation,
-and U-Net tile artifact reproduction are available;
+and released U-Net artifact reproduction for both categories are available;
 the Streamlit application remains a planned deliverable. See the
 [PatchCore guide](docs/patchcore-guide.md) for commands, scope, and H02/H03 integration.
 See the [shared evaluation results](docs/results/shared-evaluation-day21.md) for

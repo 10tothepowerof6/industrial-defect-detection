@@ -103,16 +103,17 @@ backbone và memory bank để load offline. U-Net tile được tải từ Rele
 `unet-tile-holdout-crack-v1`, kiểm tra SHA-256 trước khi load. Không cần train lại
 U-Net để tái hiện.
 
-Cả hai PatchCore và U-Net tile đã được chạy evaluator chung; config/metadata/hash
-khóa trước lượt test tại `outputs/day21/frozen-evaluation/lock.json`.
+Cả hai PatchCore và hai U-Net đã được chạy evaluator chung; config/metadata/hash
+khóa trước lượt test tại `outputs/day21/frozen-evaluation/lock.json`; U-Net
+metal_nut bổ sung có lock riêng ở `outputs/day22/frozen-metal-nut-v1/lock.json`.
 Xem [kết quả và giới hạn](results/shared-evaluation-day21.md).
 
 ## Phần tiếp theo cần Hùng
 
-1. Upload artifact/output U-Net metal_nut và checksum để Triệu tái hiện cùng 61
-   test IDs. Số trong PR H04 mới là số Hùng công bố, chưa phải kết quả local.
-2. Hùng load hai artifact PatchCore đã calibrate và chạy lại ví dụ/evaluation để
-   nghiệm thu chéo. Gói local chưa được publish lên Releases trong lượt này.
+1. U-Net metal_nut v1 đã được tải, kiểm tra checksum, load offline và tái hiện đủ
+   61 test IDs ngày 22/11. Giữ nguyên checkpoint/ngưỡng và vấn đề score viền.
+2. Triệu tự trao đổi việc Hùng load hai artifact PatchCore đã calibrate để nghiệm
+   thu chéo. Gói local chưa được publish lên Releases trong lượt này.
 3. Xử lý vấn đề score viền của U-Net metal_nut ở PR riêng, giữ baseline cũ. Chọn
    quy tắc mới trên validation, calibrate lại và ghi rõ đã xem test baseline.
 4. H05 nối app với loader/`calibrated_predict`; đối chiếu một ảnh giữa CLI và app,

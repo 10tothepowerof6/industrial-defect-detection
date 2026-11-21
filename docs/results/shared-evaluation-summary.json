@@ -301,6 +301,224 @@
       },
       "wrong_images": [],
       "output_dir": "outputs/custom_comparison/unet_resnet18/tile/20261121-150943-seed42-holdout-crack/eval-custom_comparison_tile_crack"
+    },
+    {
+      "model": "unet_resnet18",
+      "category": "metal_nut",
+      "run_id": "20261121-162901-seed42-holdout-scratch",
+      "image": {
+        "auroc": 0.87995337995338,
+        "average_precision": 0.9543714332017597,
+        "precision": 0.7391304347826086,
+        "recall": 0.8717948717948718,
+        "f1": 0.8,
+        "false_positive_rate": 0.5454545454545454,
+        "confusion": {
+          "tp": 34,
+          "fp": 12,
+          "fn": 5,
+          "tn": 10
+        },
+        "undefined": {}
+      },
+      "pixel": {
+        "auroc": 0.9306875243879119,
+        "average_precision": 0.8589536493026644,
+        "dice_defect_images": 0.5777822050728739,
+        "iou_defect_images": 0.4587253294368053,
+        "dice_good_images": 0.0,
+        "iou_good_images": 0.0,
+        "dice_iou_rule": "per image, then mean; both masks empty = 1, one empty = 0",
+        "undefined": {}
+      },
+      "groups": {
+        "good": {
+          "images": 22,
+          "false_positive_rate": 0.5454545454545454,
+          "mean_dice": 0.0,
+          "mean_iou": 0.0,
+          "undefined": {}
+        },
+        "known": {
+          "images": 16,
+          "recall": 1.0,
+          "auroc_vs_good": 1.0,
+          "average_precision_vs_good": 1.0,
+          "mean_dice": 0.7495552150683724,
+          "mean_iou": 0.6317966551208517,
+          "undefined": {}
+        },
+        "held_out": {
+          "images": 23,
+          "recall": 0.782608695652174,
+          "auroc_vs_good": 0.7964426877470356,
+          "average_precision_vs_good": 0.8928042265102872,
+          "mean_dice": 0.45828793724991856,
+          "mean_iou": 0.33832788548268594,
+          "undefined": {}
+        }
+      },
+      "counts": {
+        "images": 61,
+        "good_images": 22,
+        "defect_images": 39,
+        "pixels": 29890000,
+        "defect_pixels": 2185800,
+        "by_group": {
+          "known": 16,
+          "good": 22,
+          "held_out": 23
+        }
+      },
+      "timing": {
+        "scope": "preprocessing + model + postprocessing to original size, batch 1",
+        "device": "cuda",
+        "warmup_runs": 3,
+        "measured_images": 61,
+        "mean_ms": 13.775600000073728,
+        "median_ms": 13.725800003157929,
+        "p95_ms": 14.2100999946706,
+        "peak_vram_mb": 89.54345703125
+      },
+      "wrong_images": [
+        {
+          "sample_id": "metal_nut/test/good/003.png",
+          "group": "good",
+          "is_anomalous": "0",
+          "is_defective": "1",
+          "image_score": "0.2567822337150574",
+          "image_threshold": "0.25598547905683516"
+        },
+        {
+          "sample_id": "metal_nut/test/good/006.png",
+          "group": "good",
+          "is_anomalous": "0",
+          "is_defective": "1",
+          "image_score": "0.256670743227005",
+          "image_threshold": "0.25598547905683516"
+        },
+        {
+          "sample_id": "metal_nut/test/good/009.png",
+          "group": "good",
+          "is_anomalous": "0",
+          "is_defective": "1",
+          "image_score": "0.25642722845077515",
+          "image_threshold": "0.25598547905683516"
+        },
+        {
+          "sample_id": "metal_nut/test/good/011.png",
+          "group": "good",
+          "is_anomalous": "0",
+          "is_defective": "1",
+          "image_score": "0.2566613256931305",
+          "image_threshold": "0.25598547905683516"
+        },
+        {
+          "sample_id": "metal_nut/test/good/012.png",
+          "group": "good",
+          "is_anomalous": "0",
+          "is_defective": "1",
+          "image_score": "0.2586207389831543",
+          "image_threshold": "0.25598547905683516"
+        },
+        {
+          "sample_id": "metal_nut/test/good/013.png",
+          "group": "good",
+          "is_anomalous": "0",
+          "is_defective": "1",
+          "image_score": "0.25652143359184265",
+          "image_threshold": "0.25598547905683516"
+        },
+        {
+          "sample_id": "metal_nut/test/good/014.png",
+          "group": "good",
+          "is_anomalous": "0",
+          "is_defective": "1",
+          "image_score": "0.25665995478630066",
+          "image_threshold": "0.25598547905683516"
+        },
+        {
+          "sample_id": "metal_nut/test/good/016.png",
+          "group": "good",
+          "is_anomalous": "0",
+          "is_defective": "1",
+          "image_score": "0.3118281066417694",
+          "image_threshold": "0.25598547905683516"
+        },
+        {
+          "sample_id": "metal_nut/test/good/017.png",
+          "group": "good",
+          "is_anomalous": "0",
+          "is_defective": "1",
+          "image_score": "0.25715023279190063",
+          "image_threshold": "0.25598547905683516"
+        },
+        {
+          "sample_id": "metal_nut/test/good/018.png",
+          "group": "good",
+          "is_anomalous": "0",
+          "is_defective": "1",
+          "image_score": "0.2571416199207306",
+          "image_threshold": "0.25598547905683516"
+        },
+        {
+          "sample_id": "metal_nut/test/good/019.png",
+          "group": "good",
+          "is_anomalous": "0",
+          "is_defective": "1",
+          "image_score": "0.2580224275588989",
+          "image_threshold": "0.25598547905683516"
+        },
+        {
+          "sample_id": "metal_nut/test/good/020.png",
+          "group": "good",
+          "is_anomalous": "0",
+          "is_defective": "1",
+          "image_score": "0.2560020983219147",
+          "image_threshold": "0.25598547905683516"
+        },
+        {
+          "sample_id": "metal_nut/test/scratch/000.png",
+          "group": "held_out",
+          "is_anomalous": "1",
+          "is_defective": "0",
+          "image_score": "0.25525999069213867",
+          "image_threshold": "0.25598547905683516"
+        },
+        {
+          "sample_id": "metal_nut/test/scratch/001.png",
+          "group": "held_out",
+          "is_anomalous": "1",
+          "is_defective": "0",
+          "image_score": "0.25569379329681396",
+          "image_threshold": "0.25598547905683516"
+        },
+        {
+          "sample_id": "metal_nut/test/scratch/019.png",
+          "group": "held_out",
+          "is_anomalous": "1",
+          "is_defective": "0",
+          "image_score": "0.2528766393661499",
+          "image_threshold": "0.25598547905683516"
+        },
+        {
+          "sample_id": "metal_nut/test/scratch/020.png",
+          "group": "held_out",
+          "is_anomalous": "1",
+          "is_defective": "0",
+          "image_score": "0.2535284459590912",
+          "image_threshold": "0.25598547905683516"
+        },
+        {
+          "sample_id": "metal_nut/test/scratch/022.png",
+          "group": "held_out",
+          "is_anomalous": "1",
+          "is_defective": "0",
+          "image_score": "0.2551434636116028",
+          "image_threshold": "0.25598547905683516"
+        }
+      ],
+      "output_dir": "outputs/custom_comparison/unet_resnet18/metal_nut/20261121-162901-seed42-holdout-scratch/eval-custom_comparison_metal_nut_scratch"
     }
   ],
   "unet_reproduction": {
@@ -324,5 +542,31 @@
     "reference_release": "unet-tile-holdout-crack-v1",
     "note": "Approximate numerical reproduction across RTX 4050 and GTX 1650, not bit-exact"
   },
-  "locked_artifacts_unchanged_after_test": true
+  "locked_artifacts_unchanged_after_test": true,
+  "unet_metal_nut_reproduction": {
+    "completed_at": "2026-11-22",
+    "same_61_test_ids": true,
+    "same_test_ids_as_patchcore": true,
+    "same_all_image_decisions": true,
+    "max_image_score_abs_diff": 0.0008642077445983887,
+    "metric_abs_differences": {
+      "image/auroc": 0.0,
+      "image/average_precision": 0.0,
+      "image/precision": 0.0,
+      "image/recall": 0.0,
+      "image/f1": 0.0,
+      "image/false_positive_rate": 0.0,
+      "pixel/auroc": 1.0181305656553619e-05,
+      "pixel/average_precision": 2.718003308754824e-06,
+      "pixel/dice_defect_images": 1.809581553979811e-05,
+      "pixel/iou_defect_images": 1.8229252288781694e-05,
+      "pixel/dice_good_images": 0.0,
+      "pixel/iou_good_images": 0.0
+    },
+    "reference_release": "unet-metal-nut-holdout-scratch-v1",
+    "note": "Unchanged v1 artifact and thresholds; approximate numerical reproduction across GPUs, not bit-exact",
+    "locked_artifact_unchanged_after_test": true
+  },
+  "day20_21_completion_date": "2026-11-22",
+  "peer_cross_check": "Outside this task; Trieu will coordinate with Hung"
 }

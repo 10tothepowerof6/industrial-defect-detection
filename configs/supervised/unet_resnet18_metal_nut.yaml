@@ -1,0 +1,47 @@
+# U-Net (ResNet-18 encoder) on metal_nut, custom comparison fold with scratch held out.
+# Relative paths are resolved from the repository root; override them on the CLI in notebooks.
+experiment:
+  name: unet_resnet18_metal_nut_holdout_scratch
+  model_id: unet_resnet18
+  category: metal_nut
+  protocol: custom_comparison
+  fold: holdout-scratch
+  seed: 42
+
+data:
+  dataset_root: datasets
+  manifest: splits/seed42/custom_comparison_metal_nut_scratch.csv
+  input_height: 256
+  input_width: 256
+
+model:
+  encoder: resnet18
+  encoder_weights: imagenet
+  image_score: max_probability
+
+training:
+  device: cuda
+  batch_size: 8
+  epochs: 20
+  learning_rate: 0.0003
+  weight_decay: 0.0001
+  num_workers: 0
+  mixed_precision: true
+  bce_weight: 1.0
+  dice_weight: 1.0
+  # No flips: "flip" is a metal_nut defect type, so a mirrored good nut would be mislabeled.
+  # Rotation by 90 degrees keeps a good nut good, because nuts appear at many angles.
+  augmentation:
+    horizontal_flip: false
+    vertical_flip: false
+    rotate90: true
+  checkpoint_metric: val_dice_defect
+  max_batches_per_epoch: null
+
+calibration:
+  image_quantile: 0.95
+  pixel_quantile: 0.995
+
+paths:
+  artifact_root: artifacts
+  output_root: outputs

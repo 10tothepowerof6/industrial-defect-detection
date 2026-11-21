@@ -1,0 +1,49 @@
+# U-Net (ResNet-18 encoder) on tile, custom comparison fold with crack held out.
+# Relative paths are resolved from the repository root; override them on the CLI in notebooks.
+experiment:
+  name: unet_resnet18_tile_holdout_crack
+  model_id: unet_resnet18
+  category: tile
+  protocol: custom_comparison
+  fold: holdout-crack
+  seed: 42
+
+data:
+  dataset_root: datasets
+  manifest: splits/seed42/custom_comparison_tile_crack.csv
+  input_height: 256
+  input_width: 256
+
+model:
+  encoder: resnet18
+  encoder_weights: imagenet
+  # Image score = maximum sigmoid probability of the map at original image size.
+  image_score: max_probability
+
+training:
+  device: cuda
+  batch_size: 8
+  epochs: 20
+  learning_rate: 0.0003
+  weight_decay: 0.0001
+  num_workers: 0
+  mixed_precision: true
+  bce_weight: 1.0
+  dice_weight: 1.0
+  # Tile texture has no fixed orientation, so flips and 90-degree rotations are label-safe.
+  augmentation:
+    horizontal_flip: true
+    vertical_flip: true
+    rotate90: true
+  # Best checkpoint = highest mean Dice on known-defect validation images (threshold 0.5).
+  checkpoint_metric: val_dice_defect
+  # Set to a small number (for example 2) for a pipeline smoke test.
+  max_batches_per_epoch: null
+
+calibration:
+  image_quantile: 0.95
+  pixel_quantile: 0.995
+
+paths:
+  artifact_root: artifacts
+  output_root: outputs

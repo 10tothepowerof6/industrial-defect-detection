@@ -25,7 +25,7 @@ Score map được đưa về kích thước ảnh gốc trước khi chuyển c
 | Kiểm tra config/manifest và lưu kết quả fit | `src/industrial_defect_detection/models/anomaly/train.py` |
 | Load offline và raw prediction | `src/industrial_defect_detection/models/anomaly/patchcore.py` |
 | Xuất map/preview validation hoặc một ảnh | `scripts/predict.py` |
-| Cấu hình | `configs/anomaly/patchcore_tile.yaml`, sau đó config metal_nut ở T05 |
+| Cấu hình | `configs/anomaly/patchcore_tile.yaml`, `configs/anomaly/patchcore_metal_nut.yaml` |
 | Notebook gọi script | `notebooks/anomaly/patchcore_baseline.ipynb` |
 
 `scripts/predict.py` hiện dành cho raw PatchCore, chưa phải CLI inference cuối cho
@@ -48,6 +48,7 @@ duyệt sang; không tự đổi trạng thái nếu chưa có review.
 ```powershell
 .\.venv\Scripts\python.exe scripts/train_anomaly.py --config configs/anomaly/patchcore_tile.yaml --smoke-test
 .\.venv\Scripts\python.exe scripts/train_anomaly.py --config configs/anomaly/patchcore_tile.yaml
+.\.venv\Scripts\python.exe scripts/train_anomaly.py --config configs/anomaly/patchcore_metal_nut.yaml
 .\.venv\Scripts\python.exe scripts/predict.py --artifact-dir <artifact_dir> --manifest splits/seed42/custom_comparison_tile_crack.csv --dataset-root datasets --device cuda --output-dir <new_output_dir>
 .\.venv\Scripts\python.exe scripts/predict.py --artifact-dir <artifact_dir> --image <image_path> --device cpu --output-dir <new_output_dir>
 ```
@@ -57,6 +58,9 @@ Smoke dùng 4 ảnh good, được ghi `smoke_test: true`, không đem làm base
 Fit đầy đủ tile dùng 184 good train; 46 good val dành cho calibration sau này.
 Config fold/category/protocol phải khớp manifest. Train không decode ảnh val/test;
 chỉ đọc danh sách đường dẫn để kiểm tra manifest và chọn good train.
+Ảnh lỗi validation custom vẫn có đường dẫn `tile/test/...` hoặc
+`metal_nut/test/...` theo layout MVTec gốc. Quyết định dùng ảnh theo cột `split`
+trong manifest; đường dẫn đó không có nghĩa đang chạy custom test.
 
 Output:
 
@@ -108,6 +112,28 @@ Hùng chưa có artifact không chặn fit/load/raw prediction của PatchCore. 
 sửa chặn nghiệm thu calibration/metrics chung, không chặn phần lõi anomaly.
 Chưa có kết quả nào chứng minh model nào tốt hơn; không đặt trước kết luận U-Net
 chắc chắn bỏ sót crack/scratch.
+
+Ví dụ đăng ký sau khi loader H03 đã được review, không tạo file loader thứ hai:
+
+```python
+def _patchcore(artifact_dir, device):
+    from industrial_defect_detection.models.anomaly.patchcore import PatchcorePredictor
+    return PatchcorePredictor(artifact_dir, device)
+
+PREDICTORS["patchcore"] = _patchcore
+```
+
+Các lệnh sau **chưa chạy**, chỉ dùng sau khi H03 đã sửa và tích hợp. Thay artifact
+directory bằng run tương ứng; metal_nut dùng manifest scratch thay cho tile crack:
+
+```powershell
+.\.venv\Scripts\python.exe scripts/calibrate.py --artifact-dir <tile_artifact_dir> --dataset-root datasets --manifest splits/seed42/custom_comparison_tile_crack.csv
+# Khóa config, checkpoint và ngưỡng trước lệnh test dưới đây.
+.\.venv\Scripts\python.exe scripts/evaluate.py --artifact-dir <tile_artifact_dir> --dataset-root datasets --manifest splits/seed42/custom_comparison_tile_crack.csv
+```
+
+Kết quả chạy local, checksum và giới hạn nằm trong
+[bàn giao ngày 21](results/day21-patchcore.md).
 
 ## Phạm vi issue
 

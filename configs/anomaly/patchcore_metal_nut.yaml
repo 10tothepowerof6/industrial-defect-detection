@@ -1,0 +1,28 @@
+experiment:
+  name: patchcore_metal_nut_holdout_scratch
+  model_id: patchcore
+  category: metal_nut
+  protocol: custom_comparison
+  fold: holdout-scratch
+  seed: 42
+data:
+  dataset_root: datasets
+  manifest: splits/seed42/custom_comparison_metal_nut_scratch.csv
+  input_height: 256
+  input_width: 256
+model:
+  backbone: resnet18
+  layers: [layer2, layer3]
+  num_neighbors: 9
+  coreset_sampling_ratio: 0.01
+  weights_path: artifacts/backbones/resnet18-f37072fd.pth
+training:
+  device: cuda
+  batch_size: 4
+  cpu_threads: 4
+calibration:
+  image_quantile: 0.95
+  pixel_quantile: 0.995
+paths:
+  artifact_root: artifacts
+  output_root: outputs

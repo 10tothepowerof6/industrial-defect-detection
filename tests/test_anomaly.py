@@ -39,6 +39,16 @@ class AnomalyTests(unittest.TestCase):
         selected = validate_experiment(self.config, self.rows)
         self.assertEqual(selected, [self.rows[0]])
 
+    def test_metal_nut_uses_same_pipeline_and_held_out_contract(self):
+        config = yaml.safe_load((ROOT / "configs/anomaly/patchcore_metal_nut.yaml").read_text())
+        rows = copy.deepcopy(self.rows)
+        for row in rows:
+            row.update(category="metal_nut", held_out_defect="scratch")
+        self.assertEqual(validate_experiment(config, rows), [rows[0]])
+        self.assertEqual(config["model"], self.config["model"])
+        with self.assertRaisesRegex(ValueError, "category/protocol"):
+            validate_experiment(config, self.rows)
+
     def test_mismatched_fold_category_protocol_are_rejected(self):
         for key, value in [
             ("fold", "holdout-oil"),

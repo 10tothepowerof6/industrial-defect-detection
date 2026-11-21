@@ -4,8 +4,9 @@ Visual inspection of **tile** and **metal nut** products from MVTec AD, with a
 primary focus on learning normal appearance and detecting anomalous regions.
 
 Dataset auditing, image/mask reading, and reproducible split manifests are
-implemented. Training pipelines and the Streamlit application are planned
-deliverables.
+implemented. A good-only PatchCore fit/load/raw-prediction pipeline is available;
+the Streamlit application remains a planned deliverable. See the
+[PatchCore guide](docs/patchcore-guide.md) for commands, scope, and H02/H03 integration.
 
 Shared raw/calibrated prediction objects and a synthetic integration example are
 available. See the [day 19 handoff](docs/day19-handoff.md) for audit results,

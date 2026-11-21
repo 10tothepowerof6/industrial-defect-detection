@@ -1,15 +1,23 @@
+import csv
+import tempfile
 import unittest
+from pathlib import Path
 
 import numpy as np
 
 from industrial_defect_detection.evaluation.checks import (
     EvaluationRecord,
+    check_evaluation_manifest,
     check_ground_truth,
     check_record_set,
     check_same_test_ids,
+    fold_name,
+    load_development_manifest,
     resize_score_map,
 )
 from industrial_defect_detection.inference.contracts import RawPrediction
+
+SPLITS = Path(__file__).resolve().parents[1] / "splits" / "seed42"
 
 
 def raw(score_map=None, **changes):
@@ -155,6 +163,64 @@ class RecordSetTests(unittest.TestCase):
         check_same_test_ids(["a", "b"], ["b", "a"])
         with self.assertRaisesRegex(ValueError, "only in first"):
             check_same_test_ids(["a", "b"], ["a"])
+
+
+def read_rows(name):
+    with (SPLITS / name).open(encoding="utf-8", newline="") as file:
+        return list(csv.DictReader(file))
+
+
+class EvaluationManifestTests(unittest.TestCase):
+    """The evaluated test images must never include the artifact's train/val images."""
+
+    def setUp(self):
+        self.custom = read_rows("custom_comparison_tile_crack.csv")
+        self.official = read_rows("official_ad_tile_baseline.csv")
+        self.unet = {"fold": "holdout-crack"}
+
+    def test_fold_name(self):
+        self.assertEqual(fold_name(""), "baseline")
+        self.assertEqual(fold_name("crack"), "holdout-crack")
+
+    def test_training_manifest_is_accepted(self):
+        check_evaluation_manifest(self.unet, self.custom, self.custom)
+
+    def test_official_manifest_is_refused_for_custom_unet(self):
+        # Regression: the official tile test split contains the 38 train and 12 val defect
+        # images that U-Net (custom, holdout-crack) learned from or used to pick a checkpoint.
+        with self.assertRaisesRegex(ValueError, "allow-cross-manifest"):
+            check_evaluation_manifest(self.unet, self.custom, self.official)
+        with self.assertRaisesRegex(ValueError, "50 test images were used"):
+            check_evaluation_manifest(self.unet, self.custom, self.official, True)
+
+    def test_cross_manifest_without_overlap_is_allowed_when_requested(self):
+        # An anomaly model fitted on official normal train may be reused on the custom fold:
+        # normal train/val are identical, so no custom test image is development data.
+        anomaly = {"fold": "baseline"}
+        with self.assertRaises(ValueError):
+            check_evaluation_manifest(anomaly, self.official, self.custom)
+        check_evaluation_manifest(anomaly, self.official, self.custom, True)
+
+    def test_category_and_metadata_fold_mismatch(self):
+        metal_nut = read_rows("custom_comparison_metal_nut_scratch.csv")
+        with self.assertRaisesRegex(ValueError, "trained on tile"):
+            check_evaluation_manifest(self.unet, self.custom, metal_nut, True)
+        with self.assertRaisesRegex(ValueError, "metadata says fold holdout-oil"):
+            check_evaluation_manifest({"fold": "holdout-oil"}, self.custom, self.custom)
+        check_evaluation_manifest({"fold": "smoke-holdout-crack"}, self.custom, self.custom)
+
+    def test_development_manifest_must_be_recorded_and_unchanged(self):
+        with self.assertRaisesRegex(ValueError, "training_manifest"):
+            load_development_manifest({}, Path("datasets"))
+        with tempfile.TemporaryDirectory() as folder:
+            path = Path(folder) / "manifest.csv"
+            path.write_text("changed\n", encoding="utf-8")
+            record = {"training_manifest": {"path": str(path), "sha256": "0" * 64}}
+            with self.assertRaisesRegex(ValueError, "changed since"):
+                load_development_manifest(record, Path(folder))
+            record["training_manifest"]["path"] = str(Path(folder) / "missing.csv")
+            with self.assertRaises(FileNotFoundError):
+                load_development_manifest(record, Path(folder))
 
 
 if __name__ == "__main__":

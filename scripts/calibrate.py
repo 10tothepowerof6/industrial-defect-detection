@@ -17,21 +17,23 @@ from industrial_defect_detection.data.manifests import (  # noqa: E402
     read_manifest,
 )
 from industrial_defect_detection.evaluation.calibration import (  # noqa: E402
-    IMAGE_QUANTILE,
-    PIXEL_QUANTILE,
     calibrate_thresholds,
+    resolve_quantiles,
 )
 from industrial_defect_detection.inference.loader import load_predictor  # noqa: E402
 from industrial_defect_detection.runs import file_sha256, read_json, write_json  # noqa: E402
 
 
 def main() -> None:
-    parser = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawTextHelpFormatter)
+    parser = argparse.ArgumentParser(
+        description=__doc__, formatter_class=argparse.RawTextHelpFormatter
+    )
     parser.add_argument("--artifact-dir", type=Path, required=True)
     parser.add_argument("--dataset-root", type=Path, required=True)
     parser.add_argument("--manifest", type=Path, required=True)
-    parser.add_argument("--image-quantile", type=float, default=IMAGE_QUANTILE)
-    parser.add_argument("--pixel-quantile", type=float, default=PIXEL_QUANTILE)
+    # Priority: this CLI value, then calibration.* in the artifact's config, then the default.
+    parser.add_argument("--image-quantile", type=float, help="Default: artifact config, else 0.95")
+    parser.add_argument("--pixel-quantile", type=float, help="Default: artifact config, else 0.995")
     parser.add_argument("--device")
     parser.add_argument("--force", action="store_true", help="Replace an existing calibration")
     args = parser.parse_args()
@@ -54,7 +56,14 @@ def main() -> None:
         predictions.append(predictor.predict(image))
         print(f"\r{i}/{len(normal_val)} normal val images", end="", flush=True)
     print()
-    calibration = calibrate_thresholds(predictions, args.image_quantile, args.pixel_quantile)
+    quantiles = resolve_quantiles(metadata, args.image_quantile, args.pixel_quantile)
+    calibration = calibrate_thresholds(
+        predictions, quantiles["image_quantile"], quantiles["pixel_quantile"]
+    )
+    calibration["quantile_sources"] = {
+        "image": quantiles["image_quantile_source"],
+        "pixel": quantiles["pixel_quantile_source"],
+    }
     calibration["validation_manifest"] = {
         "path": args.manifest.as_posix(),
         "sha256": file_sha256(args.manifest),
@@ -63,6 +72,8 @@ def main() -> None:
     metadata["calibration"] = calibration
     write_json(metadata_path, metadata)
     print(
+        f"quantiles image={quantiles['image_quantile']} ({quantiles['image_quantile_source']}) "
+        f"pixel={quantiles['pixel_quantile']} ({quantiles['pixel_quantile_source']})\n"
         f"image_threshold={calibration['image_threshold']:.6f} "
         f"pixel_threshold={calibration['pixel_threshold']:.6f} "
         f"from {calibration['normal_val_images']} normal val images -> {metadata_path}"

@@ -8,6 +8,8 @@ import numpy as np
 import torch
 import yaml
 
+from industrial_defect_detection.evaluation.calibration import calibrate_thresholds
+from industrial_defect_detection.inference.loader import calibrated_predict, load_predictor
 from industrial_defect_detection.models.anomaly.patchcore import (
     MEAN,
     STD,
@@ -17,7 +19,8 @@ from industrial_defect_detection.models.anomaly.patchcore import (
     preprocess,
     sha256,
 )
-from industrial_defect_detection.models.anomaly.train import ROOT, validate_experiment
+from industrial_defect_detection.models.anomaly.train import validate_experiment
+from industrial_defect_detection.runs import REPO_ROOT as ROOT
 
 
 class AnomalyTests(unittest.TestCase):
@@ -107,13 +110,22 @@ class AnomalyTests(unittest.TestCase):
             }
             (root / "metadata.json").write_text(json.dumps(metadata))
             image = np.full((40, 55, 3), 120, np.uint8)
-            predictor = PatchcorePredictor(root)
+            predictor = load_predictor(root, "cpu")
+            self.assertIsInstance(predictor, PatchcorePredictor)
             first = predictor.predict(image)
+            with self.assertRaisesRegex(ValueError, "not calibrated"):
+                calibrated_predict(predictor, image)
             second = PatchcorePredictor(root).predict(image)
             self.assertEqual(first.score_map.shape, (40, 55))
             self.assertEqual(first.image_score, second.image_score)
             np.testing.assert_array_equal(first.score_map, second.score_map)
             self.assertEqual(tuple(predictor.model.memory_bank.shape), (16, 384))
+            metadata["calibration"] = calibrate_thresholds([first])
+            metadata["status"] = "calibrated"
+            (root / "metadata.json").write_text(json.dumps(metadata))
+            calibrated = calibrated_predict(load_predictor(root, "cpu"), image)
+            self.assertEqual(calibrated.image_threshold, first.image_score)
+            self.assertFalse(calibrated.is_defective)
             with (root / "model.ckpt").open("ab") as file:
                 file.write(b"corruption")
             with self.assertRaisesRegex(ValueError, "checksum"):

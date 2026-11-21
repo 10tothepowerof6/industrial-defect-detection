@@ -19,8 +19,14 @@ def _unet(artifact_dir: Path, device: str | None):
     return UNetPredictor(artifact_dir, device)
 
 
-# PatchCore and EfficientAD adapters are registered here in T03/T04.
-PREDICTORS = {"unet_resnet18": _unet}
+def _patchcore(artifact_dir: Path, device: str | None):
+    from industrial_defect_detection.models.anomaly.patchcore import PatchcorePredictor
+
+    return PatchcorePredictor(artifact_dir, device)
+
+
+# EfficientAD will be registered in T04.
+PREDICTORS = {"unet_resnet18": _unet, "patchcore": _patchcore}
 
 
 def load_predictor(artifact_dir: Path, device: str | None = None):

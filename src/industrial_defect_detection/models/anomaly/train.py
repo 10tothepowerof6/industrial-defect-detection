@@ -7,7 +7,6 @@ import math
 import platform
 import random
 import re
-import subprocess
 import time
 from datetime import datetime
 from pathlib import Path
@@ -18,6 +17,8 @@ import torch
 import yaml
 
 from industrial_defect_detection.data.manifests import load_manifest_sample, read_manifest
+from industrial_defect_detection.runs import git_state as provenance
+from industrial_defect_detection.runs import resolve, write_json
 
 from .patchcore import (
     MEAN,
@@ -29,30 +30,6 @@ from .patchcore import (
     select_device,
     sha256,
 )
-
-ROOT = Path(__file__).resolve().parents[4]
-
-
-def resolve(path: str | Path) -> Path:
-    path = Path(path)
-    return path if path.is_absolute() else ROOT / path
-
-
-def write_json(path: Path, value: dict) -> None:
-    path.write_text(json.dumps(value, indent=2, ensure_ascii=False) + "\n", encoding="utf-8")
-
-
-def provenance() -> dict:
-    def git(*args):
-        return subprocess.run(
-            ["git", "-c", f"safe.directory={ROOT.as_posix()}", *args],
-            cwd=ROOT,
-            check=True,
-            capture_output=True,
-            text=True,
-        ).stdout.strip()
-
-    return {"commit": git("rev-parse", "HEAD"), "dirty": bool(git("status", "--porcelain"))}
 
 
 def validate_experiment(config: dict, rows: list[dict]) -> list[dict]:

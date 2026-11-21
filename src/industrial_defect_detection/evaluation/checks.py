@@ -7,11 +7,14 @@ being rediscovered inside each metric.
 
 from collections.abc import Iterable, Sequence
 from dataclasses import dataclass
+from pathlib import Path
 
 import numpy as np
 from PIL import Image
 
+from industrial_defect_detection.data.manifests import read_manifest
 from industrial_defect_detection.inference.contracts import Prediction, RawPrediction
+from industrial_defect_detection.runs import file_sha256, resolve
 
 
 def resize_score_map(score_map: np.ndarray, height: int, width: int) -> np.ndarray:
@@ -37,7 +40,9 @@ def check_ground_truth(mask: np.ndarray, is_anomalous: int, sample_id: str = "")
         raise ValueError(f"Ground-truth mask must be a nonempty [H, W] array{where}")
     if mask.dtype != np.bool_:
         if mask.dtype != np.uint8:
-            raise ValueError(f"Ground-truth mask must be bool or uint8 0/1, got {mask.dtype}{where}")
+            raise ValueError(
+                f"Ground-truth mask must be bool or uint8 0/1, got {mask.dtype}{where}"
+            )
         if mask.max() > 1:
             raise ValueError(f"Ground-truth mask must contain only 0/1 values{where}")
     binary = mask.astype(bool)
@@ -104,9 +109,7 @@ class EvaluationRecord:
         )
 
 
-def check_record_set(
-    records: Sequence[EvaluationRecord], require_calibrated: bool = False
-) -> dict:
+def check_record_set(records: Sequence[EvaluationRecord], require_calibrated: bool = False) -> dict:
     """Check that records come from one model run and return its identity."""
     if not records:
         raise ValueError("No evaluation records were given")
@@ -124,9 +127,7 @@ def check_record_set(
     if require_calibrated and not all(calibrated):
         raise ValueError("Evaluation requires calibrated predictions; run calibration first")
     if all(calibrated):
-        thresholds = {
-            (r.prediction.image_threshold, r.prediction.pixel_threshold) for r in records
-        }
+        thresholds = {(r.prediction.image_threshold, r.prediction.pixel_threshold) for r in records}
         if len(thresholds) != 1:
             raise ValueError("All calibrated predictions in one run must share thresholds")
     category, model_id, run_id = identities.pop()
@@ -137,6 +138,83 @@ def check_record_set(
         "calibrated": all(calibrated),
         "sample_count": len(records),
     }
+
+
+def fold_name(held_out_defect: str) -> str:
+    """Fold label used in configs and run IDs: baseline or holdout-<defect>."""
+    return f"holdout-{held_out_defect}" if held_out_defect else "baseline"
+
+
+def manifest_identity(rows: Sequence[dict]) -> dict:
+    """category / protocol / fold of a validated manifest (one identity per manifest)."""
+    first = rows[0]
+    return {
+        "category": first["category"],
+        "protocol": first["protocol"],
+        "fold": fold_name(first["held_out_defect"]),
+    }
+
+
+def check_evaluation_manifest(
+    artifact_metadata: dict,
+    development_rows: Sequence[dict],
+    evaluation_rows: Sequence[dict],
+    allow_cross_manifest: bool = False,
+) -> None:
+    """Refuse to evaluate on images the model used for training or model selection.
+
+    development_rows is the manifest recorded in the artifact at training time. Its
+    train and val rows are development data; none of them may appear in the test
+    rows being evaluated. A different protocol/fold is refused unless explicitly
+    allowed (for example reusing an anomaly model fitted on the same normal train),
+    and even then the overlap check still applies.
+    """
+    trained = manifest_identity(development_rows)
+    evaluated = manifest_identity(evaluation_rows)
+    if trained["category"] != evaluated["category"]:
+        raise ValueError(
+            f"Artifact was trained on {trained['category']}, manifest is {evaluated['category']}"
+        )
+    if (trained["protocol"], trained["fold"]) != (evaluated["protocol"], evaluated["fold"]):
+        if not allow_cross_manifest:
+            raise ValueError(
+                f"Artifact was trained with {trained['protocol']}/{trained['fold']}, but the "
+                f"manifest is {evaluated['protocol']}/{evaluated['fold']}. Use the training "
+                "manifest, or pass --allow-cross-manifest when reusing a model on purpose"
+            )
+    expected_fold = artifact_metadata.get("fold")
+    if expected_fold and expected_fold.removeprefix("smoke-") != trained["fold"]:
+        raise ValueError(
+            f"Artifact metadata says fold {expected_fold}, its training manifest is "
+            f"{trained['fold']}"
+        )
+    development = {r["sample_id"] for r in development_rows if r["split"] in {"train", "val"}}
+    overlap = sorted(
+        r["sample_id"]
+        for r in evaluation_rows
+        if r["split"] == "test" and r["sample_id"] in development
+    )
+    if overlap:
+        raise ValueError(
+            f"{len(overlap)} test images were used for training or validation of this "
+            f"artifact (first: {overlap[:3]}); evaluating on them would inflate the results"
+        )
+
+
+def load_development_manifest(artifact_metadata: dict, dataset_root: Path) -> list[dict]:
+    """Read the manifest the artifact was trained with and verify it has not changed."""
+    record = artifact_metadata.get("training_manifest")
+    if not record or not record.get("path") or not record.get("sha256"):
+        raise ValueError(
+            "Artifact metadata has no training_manifest {path, sha256}; it is needed to prove "
+            "that test images were not used for training or validation"
+        )
+    path = resolve(record["path"])
+    if not path.is_file():
+        raise FileNotFoundError(f"Training manifest recorded in the artifact is missing: {path}")
+    if file_sha256(path) != record["sha256"]:
+        raise ValueError(f"Training manifest {path} changed since the artifact was trained")
+    return read_manifest(path, dataset_root)
 
 
 def check_same_test_ids(first: Iterable[str], second: Iterable[str]) -> None:

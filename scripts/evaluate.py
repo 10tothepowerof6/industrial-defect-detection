@@ -24,7 +24,11 @@ from industrial_defect_detection.data.manifests import (  # noqa: E402
     load_manifest_sample,
     read_manifest,
 )
-from industrial_defect_detection.evaluation.checks import EvaluationRecord  # noqa: E402
+from industrial_defect_detection.evaluation.checks import (  # noqa: E402
+    EvaluationRecord,
+    check_evaluation_manifest,
+    load_development_manifest,
+)
 from industrial_defect_detection.evaluation.metrics import (  # noqa: E402
     evaluate_records,
     prediction_rows,
@@ -49,23 +53,43 @@ def sync() -> None:
 
 
 def main() -> None:
-    parser = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawTextHelpFormatter)
+    parser = argparse.ArgumentParser(
+        description=__doc__, formatter_class=argparse.RawTextHelpFormatter
+    )
     parser.add_argument("--artifact-dir", type=Path, required=True)
     parser.add_argument("--dataset-root", type=Path, required=True)
     parser.add_argument("--manifest", type=Path, required=True)
     parser.add_argument("--output-dir", type=Path, help="Default: outputs/.../eval-<manifest>")
     parser.add_argument("--device")
     parser.add_argument("--warmup", type=int, default=3)
+    parser.add_argument(
+        "--allow-cross-manifest",
+        action="store_true",
+        help="Evaluate with a manifest of another protocol/fold (e.g. reuse an anomaly model).\n"
+        "Test images used for training or validation are still refused.",
+    )
     args = parser.parse_args()
 
     predictor = load_predictor(args.artifact_dir, args.device)
     meta = predictor.metadata
     rows = read_manifest(args.manifest, args.dataset_root)
     test_rows = [r for r in rows if r["split"] == "test"]
-    if {r["category"] for r in test_rows} != {predictor.category}:
-        parser.error(f"Manifest category does not match the {predictor.category} artifact")
+    if not test_rows:
+        parser.error(f"Manifest has no test rows: {args.manifest}")
+    try:
+        check_evaluation_manifest(
+            meta,
+            load_development_manifest(meta, args.dataset_root),
+            rows,
+            args.allow_cross_manifest,
+        )
+    except (ValueError, FileNotFoundError) as error:
+        parser.error(str(error))
     output_dir = args.output_dir or resolve("outputs").joinpath(
-        meta["protocol"], meta["model_id"], meta["category"], meta["run_id"],
+        meta["protocol"],
+        meta["model_id"],
+        meta["category"],
+        meta["run_id"],
         f"eval-{args.manifest.stem}",
     )
     if output_dir.exists():
@@ -101,9 +125,9 @@ def main() -> None:
     }
     if torch.cuda.is_available():
         metrics["timing"]["peak_vram_mb"] = torch.cuda.max_memory_allocated() / 2**20
-    metrics["artifact_size_mb"] = sum(
-        p.stat().st_size for p in args.artifact_dir.rglob("*") if p.is_file()
-    ) / 2**20
+    metrics["artifact_size_mb"] = (
+        sum(p.stat().st_size for p in args.artifact_dir.rglob("*") if p.is_file()) / 2**20
+    )
     metrics["environment"] = environment()
     metrics["git"] = git_state()
 
@@ -125,8 +149,15 @@ def main() -> None:
             f"{record.sample_id} [{record.group}] {verdict} "
             f"score={prediction.image_score:.4f} thr={prediction.image_threshold:.4f}"
         )
-        picture = panel(images[record.sample_id], prediction.score_map, prediction.pred_mask,
-                        low, high, record.gt_mask, title)
+        picture = panel(
+            images[record.sample_id],
+            prediction.score_map,
+            prediction.pred_mask,
+            low,
+            high,
+            record.gt_mask,
+            title,
+        )
         name = record.sample_id.replace("/", "__").rsplit(".", 1)[0]
         Image.fromarray(picture).save(output_dir / "visualizations" / f"{name}.png")
         row["sample_key"] = key
@@ -144,13 +175,19 @@ def main() -> None:
     def fmt(value):
         return "null" if value is None else f"{value:.4f}"
 
-    print(f"Image AUROC {fmt(image['auroc'])} AP {fmt(image['average_precision'])} "
-          f"F1 {fmt(image['f1'])} FPR {fmt(image['false_positive_rate'])}")
-    print(f"Pixel AUROC {fmt(pixel['auroc'])} AP {fmt(pixel['average_precision'])} "
-          f"Dice(defect) {fmt(pixel['dice_defect_images'])}")
-    print(f"Recall known {fmt(groups['known'].get('recall'))} "
-          f"held-out {fmt(groups['held_out'].get('recall'))} "
-          f"good FPR {fmt(groups['good']['false_positive_rate'])}")
+    print(
+        f"Image AUROC {fmt(image['auroc'])} AP {fmt(image['average_precision'])} "
+        f"F1 {fmt(image['f1'])} FPR {fmt(image['false_positive_rate'])}"
+    )
+    print(
+        f"Pixel AUROC {fmt(pixel['auroc'])} AP {fmt(pixel['average_precision'])} "
+        f"Dice(defect) {fmt(pixel['dice_defect_images'])}"
+    )
+    print(
+        f"Recall known {fmt(groups['known'].get('recall'))} "
+        f"held-out {fmt(groups['held_out'].get('recall'))} "
+        f"good FPR {fmt(groups['good']['false_positive_rate'])}"
+    )
     print(f"Saved to {output_dir}")
 
 

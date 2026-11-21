@@ -7,9 +7,7 @@ from torch import nn
 
 def build_unet(encoder: str = "resnet18", encoder_weights: str | None = "imagenet") -> nn.Module:
     """One output channel of logits. Use encoder_weights=None when loading a checkpoint."""
-    return smp.Unet(
-        encoder_name=encoder, encoder_weights=encoder_weights, in_channels=3, classes=1
-    )
+    return smp.Unet(encoder_name=encoder, encoder_weights=encoder_weights, in_channels=3, classes=1)
 
 
 class BCEDiceLoss(nn.Module):
@@ -27,7 +25,5 @@ class BCEDiceLoss(nn.Module):
         bce = self.bce(logits, target)
         probabilities = torch.sigmoid(logits)
         intersection = (probabilities * target).sum()
-        dice = (2 * intersection + self.smooth) / (
-            probabilities.sum() + target.sum() + self.smooth
-        )
+        dice = (2 * intersection + self.smooth) / (probabilities.sum() + target.sum() + self.smooth)
         return self.bce_weight * bce + self.dice_weight * (1 - dice)

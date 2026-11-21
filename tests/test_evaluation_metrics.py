@@ -5,6 +5,7 @@ import numpy as np
 from industrial_defect_detection.evaluation.calibration import (
     apply_calibration,
     calibrate_thresholds,
+    resolve_quantiles,
 )
 from industrial_defect_detection.evaluation.checks import EvaluationRecord
 from industrial_defect_detection.evaluation.metrics import (
@@ -117,6 +118,37 @@ class CalibrationTests(unittest.TestCase):
         calibrated = apply_calibration(normal[0], calibration)
         self.assertEqual(calibrated.image_threshold, calibration["image_threshold"])
 
+    def test_quantile_priority_cli_then_artifact_config_then_default(self):
+        config = {"config": {"calibration": {"image_quantile": 0.9, "pixel_quantile": 0.99}}}
+        self.assertEqual(
+            resolve_quantiles(config, 0.8, None),
+            {
+                "image_quantile": 0.8,
+                "image_quantile_source": "cli",
+                "pixel_quantile": 0.99,
+                "pixel_quantile_source": "artifact_config",
+            },
+        )
+        resolved = resolve_quantiles({"config": {"calibration": {"image_quantile": 0.9}}})
+        self.assertEqual(
+            (resolved["image_quantile"], resolved["image_quantile_source"]),
+            (0.9, "artifact_config"),
+        )
+        self.assertEqual(
+            (resolved["pixel_quantile"], resolved["pixel_quantile_source"]), (0.995, "default")
+        )
+        self.assertEqual(resolve_quantiles({})["image_quantile_source"], "default")
+
+    def test_resolved_quantiles_change_and_are_saved_with_thresholds(self):
+        normal = [raw(float(i), np.full(SHAPE, i / 10, np.float32)) for i in range(1, 21)]
+        quantiles = resolve_quantiles({"config": {"calibration": {"image_quantile": 0.5}}})
+        calibration = calibrate_thresholds(
+            normal, quantiles["image_quantile"], quantiles["pixel_quantile"]
+        )
+        self.assertEqual(calibration["image_quantile"], 0.5)
+        self.assertEqual(calibration["pixel_quantile"], 0.995)
+        self.assertAlmostEqual(calibration["image_threshold"], 10.5)
+
     def test_rejects_wrong_inputs(self):
         with self.assertRaises(ValueError):
             calibrate_thresholds([])
@@ -184,8 +216,9 @@ class EvaluateRecordsTests(unittest.TestCase):
         self.assertIsNone(result["pixel"]["auroc"])
 
     def test_requires_calibrated_predictions(self):
-        uncalibrated = EvaluationRecord("g0", "good", 0, False, raw(0.1, square(0.0)),
-                                        np.zeros(SHAPE, np.uint8))
+        uncalibrated = EvaluationRecord(
+            "g0", "good", 0, False, raw(0.1, square(0.0)), np.zeros(SHAPE, np.uint8)
+        )
         with self.assertRaisesRegex(ValueError, "calibrat"):
             evaluate_records([uncalibrated])
 

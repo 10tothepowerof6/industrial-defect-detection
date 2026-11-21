@@ -17,7 +17,9 @@ from industrial_defect_detection.runs import load_config  # noqa: E402
 
 
 def main() -> None:
-    parser = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawTextHelpFormatter)
+    parser = argparse.ArgumentParser(
+        description=__doc__, formatter_class=argparse.RawTextHelpFormatter
+    )
     parser.add_argument("--config", type=Path, required=True)
     parser.add_argument("--dataset-root", help="Override data.dataset_root (e.g. on Colab)")
     parser.add_argument("--epochs", type=int, help="Override training.epochs")

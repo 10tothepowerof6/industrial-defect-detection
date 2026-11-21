@@ -188,7 +188,9 @@ def evaluate_records(records: Sequence[EvaluationRecord]) -> dict:
             }
         entry["mean_dice"] = _mean([d for d, _ in group_overlaps])
         entry["mean_iou"] = _mean([i for _, i in group_overlaps])
-        reasons.update({"mean_dice": "no images in this group", "mean_iou": "no images in this group"})
+        reasons.update(
+            {"mean_dice": "no images in this group", "mean_iou": "no images in this group"}
+        )
         group_metrics[group] = _undefined(entry, reasons)
 
     per_defect = {}

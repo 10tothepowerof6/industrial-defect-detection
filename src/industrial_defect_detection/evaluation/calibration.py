@@ -11,6 +11,32 @@ PIXEL_QUANTILE = 0.995
 QUANTILE_METHOD = "linear"
 
 
+def resolve_quantiles(
+    artifact_metadata: dict,
+    image_quantile: float | None = None,
+    pixel_quantile: float | None = None,
+) -> dict:
+    """Pick each quantile by priority: CLI value, then the artifact's config, then the default.
+
+    Returns the values actually used and where each one came from, so they can be saved.
+    """
+    config = (artifact_metadata.get("config") or {}).get("calibration") or {}
+    resolved = {}
+    for name, cli_value, default in (
+        ("image_quantile", image_quantile, IMAGE_QUANTILE),
+        ("pixel_quantile", pixel_quantile, PIXEL_QUANTILE),
+    ):
+        if cli_value is not None:
+            value, source = cli_value, "cli"
+        elif config.get(name) is not None:
+            value, source = config[name], "artifact_config"
+        else:
+            value, source = default, "default"
+        resolved[name] = float(value)
+        resolved[f"{name}_source"] = source
+    return resolved
+
+
 def calibrate_thresholds(
     normal_val: Sequence[RawPrediction],
     image_quantile: float = IMAGE_QUANTILE,
@@ -41,6 +67,8 @@ def calibrate_thresholds(
         "run_id": run_id,
         "image_threshold": image_threshold,
         "pixel_threshold": pixel_threshold,
+        "image_quantile": float(image_quantile),
+        "pixel_quantile": float(pixel_quantile),
         "method": {
             "source": "normal validation images",
             "image": f"quantile {image_quantile} of image scores",

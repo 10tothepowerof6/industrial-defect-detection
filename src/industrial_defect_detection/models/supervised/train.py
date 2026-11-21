@@ -11,6 +11,7 @@ import yaml
 from torch.utils.data import DataLoader
 
 from industrial_defect_detection.data.manifests import read_manifest
+from industrial_defect_detection.evaluation.checks import fold_name
 from industrial_defect_detection.evaluation.metrics import dice_iou
 from industrial_defect_detection.runs import (
     environment,
@@ -36,9 +37,26 @@ def seed_everything(seed: int) -> None:
     torch.cuda.manual_seed_all(seed)
 
 
+def check_fold(rows: list[dict], config: dict) -> None:
+    """The config's fold must describe the manifest, or metadata would name the wrong experiment.
+
+    A smoke test keeps the real fold behind a "smoke-" prefix.
+    """
+    held_out = {row["held_out_defect"] for row in rows}
+    if len(held_out) != 1:
+        raise ValueError(f"Manifest mixes several held-out defects: {sorted(held_out)}")
+    expected = fold_name(held_out.pop())
+    configured = config["experiment"]["fold"]
+    if configured.removeprefix("smoke-") != expected:
+        raise ValueError(
+            f"Config fold '{configured}' does not match the manifest, which needs '{expected}'"
+        )
+
+
 def split_rows(rows: list[dict], config: dict) -> dict[str, list[dict]]:
     """Train on every train row; validate on val rows. Test rows are never loaded here."""
     exp = config["experiment"]
+    check_fold(rows, config)
     for row in rows:
         if row["category"] != exp["category"] or row["protocol"] != exp["protocol"]:
             raise ValueError(
@@ -161,13 +179,19 @@ def train(config: dict, run_id: str | None = None) -> Path:
             total += loss.item() * len(images)
             seen += len(images)
         scheduler.step()
-        metrics = {"epoch": epoch, "train_loss": total / seen, **validate(model, val_loader, loss_fn, device)}
+        metrics = {
+            "epoch": epoch,
+            "train_loss": total / seen,
+            **validate(model, val_loader, loss_fn, device),
+        }
         metrics["lr"] = scheduler.get_last_lr()[0]
         history.append(metrics)
         improved = metrics[train_cfg["checkpoint_metric"]] > best
         if improved:
             best, best_epoch = metrics[train_cfg["checkpoint_metric"]], epoch
-            torch.save({"state_dict": model.state_dict(), "epoch": epoch}, artifact_dir / CHECKPOINT)
+            torch.save(
+                {"state_dict": model.state_dict(), "epoch": epoch}, artifact_dir / CHECKPOINT
+            )
         print(
             f"epoch {epoch:3d} train_loss {metrics['train_loss']:.4f} "
             f"val_loss {metrics['val_loss']:.4f} val_dice_defect {metrics['val_dice_defect']:.4f} "

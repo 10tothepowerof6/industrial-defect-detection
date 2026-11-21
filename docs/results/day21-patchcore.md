@@ -1,5 +1,10 @@
 # Bàn giao PatchCore ngày 21/11/2026
 
+Bản này ghi thời điểm trước calibration. Phần tích hợp H02/H03, ngưỡng và custom
+test được cập nhật tại [kết quả đánh giá chung](shared-evaluation-day21.md).
+Gói ZIP uncalibrated cũ giữ nguyên; metadata của artifact làm việc hiện đã được
+calibrate bằng evaluator chung.
+
 ## Đã chạy thật trên máy Triệu
 
 Python 3.11.9, torch 2.10.0+cu128, Anomalib 2.7.0, GTX 1650 4 GB.

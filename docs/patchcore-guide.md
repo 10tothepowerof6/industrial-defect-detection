@@ -9,8 +9,8 @@ k-center greedy chọn các patch đại diện vào memory bank.
 
 Baseline dành cho GTX 1650 4 GB dùng ResNet-18 pretrained ImageNet, layer2/layer3,
 ảnh 256×256, batch 4, coreset 1% và 9 neighbors. Đây là cấu hình tiết kiệm tài nguyên,
-khác backbone Wide ResNet-50 của cấu hình PatchCore thường dùng. Chất lượng phải
-được đo sau; không coi tên thuật toán là bằng chứng đạt kết quả từ paper.
+khác backbone Wide ResNet-50 của cấu hình PatchCore thường dùng. Kết quả custom
+test được ghi riêng; không coi tên thuật toán là bằng chứng đạt kết quả từ paper.
 
 Reader trả RGB; resize bilinear rồi chuẩn hóa bằng ImageNet mean/std. BatchNorm
 của backbone luôn ở eval mode khi trích đặc trưng. Không augmentation, crop hoặc
@@ -28,9 +28,9 @@ Score map được đưa về kích thước ảnh gốc trước khi chuyển c
 | Cấu hình | `configs/anomaly/patchcore_tile.yaml`, `configs/anomaly/patchcore_metal_nut.yaml` |
 | Notebook gọi script | `notebooks/anomaly/patchcore_baseline.ipynb` |
 
-`scripts/predict.py` hiện dành cho raw PatchCore, chưa phải CLI inference cuối cho
-mọi model. Khi H03 merge, đổi điểm load model sang loader chung và giữ các lệnh
-đang dùng tương thích. Không thêm một registry cạnh tranh với `PREDICTORS` của Hùng.
+`scripts/predict.py` dùng loader chung cho PatchCore và U-Net. Mặc định xuất raw
+score/map để giữ tương thích với notebook. Thêm `--calibrated` để xuất quyết định,
+mask và overlay bằng ngưỡng trong artifact; artifact chưa calibrate sẽ bị từ chối.
 
 ## Điều kiện và lệnh chạy
 
@@ -74,70 +74,56 @@ Output:
   Không xuất quyết định PASS/DEFECT, mask dự đoán hoặc metric khi chưa calibrate.
   Thời gian predict ghi trong CSV chỉ để kiểm tra, chưa phải benchmark latency.
 
-## Khi Hùng sửa xong H02/H03 và upload artifact tile
+H02/H03/H04 đã được tích hợp trên branch local `feat/patchcore-shared-evaluation`.
+PatchCore đã calibrate bằng normal val và đánh giá bằng evaluator H03; U-Net tile
+đã được tải từ Releases, kiểm tra hash, load offline và tái hiện cùng custom test.
+Xem [kết quả tích hợp](results/shared-evaluation-day21.md) để biết số liệu và việc
+còn chờ Hùng. Bản bàn giao raw trước đó vẫn được giữ như lịch sử chạy.
 
-1. Review lại H03: evaluate phải chặn sai protocol/fold và test trùng dữ liệu phát
-   triển. Quantile phải theo thứ tự CLI → config artifact → mặc định, lưu giá trị
-   thật. Review H02: config fold phải khớp held_out_defect, có regression tests.
-2. Tích hợp H03 trước H02 vì H02 dựa trên H03. Đưa cả hai về main mới nhất theo
-   trạng thái PR lúc đó; không merge hoặc cherry-pick cả một branch một cách mù quáng.
-3. Dùng lại `runs.py`, overlay và loader của H03 sau khi review. Helper trong
-   `models/anomaly/train.py` hiện chỉ phục vụ PatchCore trong lúc chờ; gom phần
-   thực sự trùng vào helper chung khi tích hợp, giữ kiểm tra provenance và đường dẫn.
-4. Đăng ký `PatchcorePredictor` vào `inference/loader.py` của Hùng bằng lazy import.
-   Constructor đã nhận `(artifact_dir, device=None)`, có `metadata`, `model_id`,
-   `category`, `run_id`; `predict(uint8 RGB)` trả `RawPrediction` tại size ảnh gốc.
-5. Chạy lại test loader/CLI, gồm load PatchCore và U-Net, sai category/fold/manifest,
-   thiếu checkpoint, checksum sai và artifact chưa calibrate. Xác nhận evaluator
-   không chuẩn hóa score khác nhau giữa các model.
-6. Calibrate PatchCore tile bằng 46 good val và metal_nut bằng 44 good val. Dùng
-   quantile ảnh 0.95/pixel 0.995 đã chốt; giữ raw map và image score native. Lưu
-   ngưỡng, quantile, số mẫu/pixel và manifest hash trong metadata theo schema H03.
-7. Tải artifact U-Net tile từ Releases sau khi kiểm tra checksum Hùng cung cấp.
-   Load offline, kiểm tra preprocessing/fold/hash và thử một ảnh validation. So
-   với output tham chiếu Hùng bàn giao; sai số số thực giữa CPU/GPU cần được ghi rõ.
-   Không cần train lại chỉ vì bắt đầu tích hợp trên máy Triệu.
-8. Hùng cần bàn giao thêm config thực tế, commit/dirty status, checksum, lệnh load,
-   calibration/evaluate, metrics và predictions.csv. Nếu H03 sửa ảnh hưởng ngưỡng
-   hoặc sample IDs, chạy lại phần bị ảnh hưởng và giữ rõ phiên bản số liệu cũ/mới.
-9. Khóa config/model/ngưỡng rồi đánh giá PatchCore bằng cùng custom test IDs với
-   U-Net: tile 67 ảnh, metal_nut 61 ảnh khi U-Net category đó sẵn sàng. Tách good,
-   known và held-out; AUROC held-out cần có good làm lớp âm. Không đánh giá U-Net
-   custom trên official test có chứa ảnh từng dùng train/val.
-10. Dùng evaluator chung xuất metric, predictions, mask và overlay; đo latency có
-    warm-up/CUDA synchronization. Chọn ví dụ tốt và failure cases cho slide.
-    Kết quả test đã dùng để sửa cấu hình phải ghi là thăm dò.
+## Dùng calibration và evaluator chung
 
-Hùng chưa có artifact không chặn fit/load/raw prediction của PatchCore. H03 chưa
-sửa chặn nghiệm thu calibration/metrics chung, không chặn phần lõi anomaly.
-Chưa có kết quả nào chứng minh model nào tốt hơn; không đặt trước kết luận U-Net
-chắc chắn bỏ sót crack/scratch.
-
-Ví dụ đăng ký sau khi loader H03 đã được review, không tạo file loader thứ hai:
-
-```python
-def _patchcore(artifact_dir, device):
-    from industrial_defect_detection.models.anomaly.patchcore import PatchcorePredictor
-    return PatchcorePredictor(artifact_dir, device)
-
-PREDICTORS["patchcore"] = _patchcore
-```
-
-Các lệnh sau **chưa chạy**, chỉ dùng sau khi H03 đã sửa và tích hợp. Thay artifact
-directory bằng run tương ứng; metal_nut dùng manifest scratch thay cho tile crack:
+H02/H03/H04 đã vào main qua PR #17 và #19. Loader có cả `patchcore` và
+`unet_resnet18`; helper run/provenance và overlay được dùng chung. CLI raw cũ vẫn
+hoạt động; `--calibrated` yêu cầu ngưỡng hợp lệ và xuất thêm quyết định/mask.
 
 ```powershell
-.\.venv\Scripts\python.exe scripts/calibrate.py --artifact-dir <tile_artifact_dir> --dataset-root datasets --manifest splits/seed42/custom_comparison_tile_crack.csv
-# Khóa config, checkpoint và ngưỡng trước lệnh test dưới đây.
-.\.venv\Scripts\python.exe scripts/evaluate.py --artifact-dir <tile_artifact_dir> --dataset-root datasets --manifest splits/seed42/custom_comparison_tile_crack.csv
+.\.venv\Scripts\python.exe scripts/calibrate.py --artifact-dir <artifact_dir> --dataset-root datasets --manifest <training_manifest_csv> --device cuda
+.\.venv\Scripts\python.exe scripts/predict.py --artifact-dir <artifact_dir> --image <image_path> --output-dir <new_output_dir> --device cuda --calibrated
+# Khóa config, checkpoint và ngưỡng trước khi chạy test.
+.\.venv\Scripts\python.exe scripts/evaluate.py --artifact-dir <artifact_dir> --dataset-root datasets --manifest <training_manifest_csv> --device cuda
 ```
 
-Kết quả chạy local, checksum và giới hạn nằm trong
-[bàn giao ngày 21](results/day21-patchcore.md).
+Calibration chỉ dùng normal validation từ manifest đã ghi trong artifact;
+manifest khác hash bị chặn. Evaluate chặn sai protocol/fold và ảnh test trùng
+train/val. Quantile theo thứ tự CLI → config artifact → mặc định 0.95/0.995.
+Không dùng `--force` để đổi ngưỡng sau khi xem test rồi coi đó là kết quả chưa thăm dò.
+
+Artifact cũ không có ngưỡng vẫn predict raw được. Checkpoint PatchCore chứa đủ
+backbone và memory bank để load offline. U-Net tile được tải từ Release
+`unet-tile-holdout-crack-v1`, kiểm tra SHA-256 trước khi load. Không cần train lại
+U-Net để tái hiện.
+
+Cả hai PatchCore và U-Net tile đã được chạy evaluator chung; config/metadata/hash
+khóa trước lượt test tại `outputs/day21/frozen-evaluation/lock.json`.
+Xem [kết quả và giới hạn](results/shared-evaluation-day21.md).
+
+## Phần tiếp theo cần Hùng
+
+1. Upload artifact/output U-Net metal_nut và checksum để Triệu tái hiện cùng 61
+   test IDs. Số trong PR H04 mới là số Hùng công bố, chưa phải kết quả local.
+2. Hùng load hai artifact PatchCore đã calibrate và chạy lại ví dụ/evaluation để
+   nghiệm thu chéo. Gói local chưa được publish lên Releases trong lượt này.
+3. Xử lý vấn đề score viền của U-Net metal_nut ở PR riêng, giữ baseline cũ. Chọn
+   quy tắc mới trên validation, calibrate lại và ghi rõ đã xem test baseline.
+4. H05 nối app với loader/`calibrated_predict`; đối chiếu một ảnh giữa CLI và app,
+   cache đúng category/model và hiển thị score/ngưỡng, không gọi score là confidence.
+
+Không đặt trước kết luận anomaly luôn tốt hơn supervised hoặc supervised chắc
+chắn bỏ sót lỗi mới. Hai hướng cần so sánh cả quyết định cấp ảnh và chất lượng mask.
 
 ## Phạm vi issue
 
-T03 #3 mới hoàn tất phần fit/load/raw prediction khi chưa có H03 và kiểm tra chéo.
+T03 #3 đã có fit/load/calibrate/evaluate tile, còn kiểm tra chéo và bàn giao cho Hùng.
 T05 #5 ở đợt này chỉ làm PatchCore metal_nut. EfficientAD thuộc T04 và phần còn lại
 của T05; mọi fold unseen và study lượng ảnh good vẫn là T06/T07. Không đóng các
 issue dài hạn dựa trên kết quả một phần cho deadline.

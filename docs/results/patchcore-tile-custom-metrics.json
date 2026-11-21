@@ -1,0 +1,147 @@
+{
+  "schema_version": 1,
+  "category": "tile",
+  "model_id": "patchcore",
+  "run_id": "20261121-202249-seed42-holdout-crack",
+  "calibrated": true,
+  "sample_count": 67,
+  "image_threshold": 1.7266495823860168,
+  "pixel_threshold": 1.6304254531860352,
+  "counts": {
+    "images": 67,
+    "good_images": 33,
+    "defect_images": 34,
+    "pixels": 47275200,
+    "defect_pixels": 1988238,
+    "by_group": {
+      "held_out": 17,
+      "known": 17,
+      "good": 33
+    }
+  },
+  "image": {
+    "auroc": 0.9973262032085563,
+    "average_precision": 0.9976152623211447,
+    "precision": 0.9428571428571428,
+    "recall": 0.9705882352941176,
+    "f1": 0.9565217391304348,
+    "false_positive_rate": 0.06060606060606061,
+    "confusion": {
+      "tp": 33,
+      "fp": 2,
+      "fn": 1,
+      "tn": 31
+    },
+    "undefined": {}
+  },
+  "pixel": {
+    "auroc": 0.9394958991362707,
+    "average_precision": 0.3026286908091461,
+    "dice_defect_images": 0.4051768876313671,
+    "iou_defect_images": 0.3052650907477388,
+    "dice_good_images": 0.36363636363636365,
+    "iou_good_images": 0.36363636363636365,
+    "dice_iou_rule": "per image, then mean; both masks empty = 1, one empty = 0",
+    "undefined": {}
+  },
+  "groups": {
+    "good": {
+      "images": 33,
+      "false_positive_rate": 0.06060606060606061,
+      "mean_dice": 0.36363636363636365,
+      "mean_iou": 0.36363636363636365,
+      "undefined": {}
+    },
+    "known": {
+      "images": 17,
+      "recall": 0.9411764705882353,
+      "auroc_vs_good": 0.9946524064171123,
+      "average_precision_vs_good": 0.9911764705882353,
+      "mean_dice": 0.7005818741679748,
+      "mean_iou": 0.5521799770392805,
+      "undefined": {}
+    },
+    "held_out": {
+      "images": 17,
+      "recall": 1.0,
+      "auroc_vs_good": 1.0,
+      "average_precision_vs_good": 1.0,
+      "mean_dice": 0.10977190109475934,
+      "mean_iou": 0.058350204456197104,
+      "undefined": {}
+    }
+  },
+  "per_defect_type": {
+    "crack": {
+      "group": "held_out",
+      "images": 17,
+      "recall": 1.0,
+      "mean_dice": 0.10977190109475934,
+      "mean_iou": 0.058350204456197104
+    },
+    "glue_strip": {
+      "group": "known",
+      "images": 5,
+      "recall": 1.0,
+      "mean_dice": 0.5703834381466815,
+      "mean_iou": 0.4018710329767899
+    },
+    "gray_stroke": {
+      "group": "known",
+      "images": 4,
+      "recall": 0.75,
+      "mean_dice": 0.6524603380939562,
+      "mean_iou": 0.4897104237815809
+    },
+    "oil": {
+      "group": "known",
+      "images": 5,
+      "recall": 1.0,
+      "mean_dice": 0.824681063418541,
+      "mean_iou": 0.7026983897828223
+    },
+    "rough": {
+      "group": "known",
+      "images": 3,
+      "recall": 1.0,
+      "mean_dice": 0.7749093335512119,
+      "mean_iou": 0.6351236002477944
+    }
+  },
+  "manifest": {
+    "path": "splits/seed42/custom_comparison_tile_crack.csv",
+    "sha256": "5766640a05cdc67468ea12c556554dd73e98a16a00953a3523d9d7d61406c9a3"
+  },
+  "timing": {
+    "scope": "preprocessing + model + postprocessing to original size, batch 1",
+    "device": "cuda",
+    "warmup_runs": 3,
+    "measured_images": 67,
+    "mean_ms": 19.200604477938118,
+    "median_ms": 18.959400003950577,
+    "p95_ms": 21.986780002043815,
+    "peak_vram_mb": 32.4111328125
+  },
+  "artifact_size_mb": 13.466421127319336,
+  "environment": {
+    "python": "3.11.9",
+    "platform": "Windows-10-10.0.19045-SP0",
+    "executable": "D:\\Projects\\industrial-defect-detection\\.venv\\Scripts\\python.exe",
+    "packages": {
+      "torch": "2.10.0+cu128",
+      "torchvision": "0.25.0+cu128",
+      "segmentation-models-pytorch": "0.5.0",
+      "anomalib": "2.7.0",
+      "numpy": "2.4.6",
+      "pillow": "12.3.0",
+      "scikit-learn": "1.9.1"
+    },
+    "cuda_available": true,
+    "cuda_runtime": "12.8",
+    "device": "NVIDIA GeForce GTX 1650"
+  },
+  "git": {
+    "commit": "6c5adcc1a1a8144441ec03c6c63a12b0f1b0ad85",
+    "dirty": true
+  }
+}

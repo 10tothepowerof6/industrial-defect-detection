@@ -1,0 +1,140 @@
+{
+  "schema_version": 1,
+  "category": "metal_nut",
+  "model_id": "patchcore",
+  "run_id": "20261121-202715-seed42-holdout-scratch",
+  "calibrated": true,
+  "sample_count": 61,
+  "image_threshold": 2.017776358127594,
+  "pixel_threshold": 1.936932921409607,
+  "counts": {
+    "images": 61,
+    "good_images": 22,
+    "defect_images": 39,
+    "pixels": 29890000,
+    "defect_pixels": 2185800,
+    "by_group": {
+      "known": 16,
+      "good": 22,
+      "held_out": 23
+    }
+  },
+  "image": {
+    "auroc": 0.9895104895104895,
+    "average_precision": 0.9948160535117057,
+    "precision": 0.9487179487179487,
+    "recall": 0.9487179487179487,
+    "f1": 0.9487179487179487,
+    "false_positive_rate": 0.09090909090909091,
+    "confusion": {
+      "tp": 37,
+      "fp": 2,
+      "fn": 2,
+      "tn": 20
+    },
+    "undefined": {}
+  },
+  "pixel": {
+    "auroc": 0.9818915510285142,
+    "average_precision": 0.7942653895335438,
+    "dice_defect_images": 0.631721182042287,
+    "iou_defect_images": 0.48599490047143545,
+    "dice_good_images": 0.22727272727272727,
+    "iou_good_images": 0.22727272727272727,
+    "dice_iou_rule": "per image, then mean; both masks empty = 1, one empty = 0",
+    "undefined": {}
+  },
+  "groups": {
+    "good": {
+      "images": 22,
+      "false_positive_rate": 0.09090909090909091,
+      "mean_dice": 0.22727272727272727,
+      "mean_iou": 0.22727272727272727,
+      "undefined": {}
+    },
+    "known": {
+      "images": 16,
+      "recall": 1.0,
+      "auroc_vs_good": 1.0,
+      "average_precision_vs_good": 1.0,
+      "mean_dice": 0.6824819552633021,
+      "mean_iou": 0.5517635506197236,
+      "undefined": {}
+    },
+    "held_out": {
+      "images": 23,
+      "recall": 0.9130434782608695,
+      "auroc_vs_good": 0.9822134387351779,
+      "average_precision_vs_good": 0.986231884057971,
+      "mean_dice": 0.5964093398015808,
+      "mean_iou": 0.44024279602045246,
+      "undefined": {}
+    }
+  },
+  "per_defect_type": {
+    "bent": {
+      "group": "known",
+      "images": 5,
+      "recall": 1.0,
+      "mean_dice": 0.5928993157374773,
+      "mean_iou": 0.42535646789137127
+    },
+    "color": {
+      "group": "known",
+      "images": 5,
+      "recall": 1.0,
+      "mean_dice": 0.5147275424892477,
+      "mean_iou": 0.3642994120088926
+    },
+    "flip": {
+      "group": "known",
+      "images": 6,
+      "recall": 1.0,
+      "mean_dice": 0.896929498846535,
+      "mean_iou": 0.8133229017357096
+    },
+    "scratch": {
+      "group": "held_out",
+      "images": 23,
+      "recall": 0.9130434782608695,
+      "mean_dice": 0.5964093398015808,
+      "mean_iou": 0.44024279602045246
+    }
+  },
+  "manifest": {
+    "path": "splits/seed42/custom_comparison_metal_nut_scratch.csv",
+    "sha256": "3dc5e76351203fd7532c38e4adf1a413b1c816054524119f8f76f43da532f180"
+  },
+  "timing": {
+    "scope": "preprocessing + model + postprocessing to original size, batch 1",
+    "device": "cuda",
+    "warmup_runs": 3,
+    "measured_images": 61,
+    "mean_ms": 17.472393442060778,
+    "median_ms": 17.343999999866355,
+    "p95_ms": 20.721399996546097,
+    "peak_vram_mb": 32.4111328125
+  },
+  "artifact_size_mb": 13.351736068725586,
+  "environment": {
+    "python": "3.11.9",
+    "platform": "Windows-10-10.0.19045-SP0",
+    "executable": "D:\\Projects\\industrial-defect-detection\\.venv\\Scripts\\python.exe",
+    "packages": {
+      "torch": "2.10.0+cu128",
+      "torchvision": "0.25.0+cu128",
+      "segmentation-models-pytorch": "0.5.0",
+      "anomalib": "2.7.0",
+      "numpy": "2.4.6",
+      "pillow": "12.3.0",
+      "scikit-learn": "1.9.1"
+    },
+    "cuda_available": true,
+    "cuda_runtime": "12.8",
+    "device": "NVIDIA GeForce GTX 1650"
+  },
+  "git": {
+    "commit": "6c5adcc1a1a8144441ec03c6c63a12b0f1b0ad85",
+    "dirty": true
+  }
+}

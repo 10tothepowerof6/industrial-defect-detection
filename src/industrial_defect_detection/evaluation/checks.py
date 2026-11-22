@@ -201,6 +201,15 @@ def check_evaluation_manifest(
         )
 
 
+def check_calibration_manifest(artifact_metadata: dict, manifest_path: Path) -> None:
+    """Calibration uses the frozen manifest recorded by the artifact, never a new split."""
+    expected = (artifact_metadata.get("training_manifest") or {}).get("sha256")
+    if not expected or file_sha256(manifest_path) != expected:
+        raise ValueError(
+            "Calibration manifest differs from the artifact's recorded training manifest"
+        )
+
+
 def load_development_manifest(artifact_metadata: dict, dataset_root: Path) -> list[dict]:
     """Read the manifest the artifact was trained with and verify it has not changed."""
     record = artifact_metadata.get("training_manifest")

@@ -20,6 +20,7 @@ from industrial_defect_detection.evaluation.calibration import (  # noqa: E402
     calibrate_thresholds,
     resolve_quantiles,
 )
+from industrial_defect_detection.evaluation.checks import check_calibration_manifest  # noqa: E402
 from industrial_defect_detection.inference.loader import load_predictor  # noqa: E402
 from industrial_defect_detection.runs import file_sha256, read_json, write_json  # noqa: E402
 
@@ -42,6 +43,10 @@ def main() -> None:
     metadata = read_json(metadata_path)
     if metadata.get("status") == "calibrated" and not args.force:
         parser.error("Artifact is already calibrated; pass --force to recalibrate")
+    try:
+        check_calibration_manifest(metadata, args.manifest)
+    except ValueError as error:
+        parser.error(str(error))
     predictor = load_predictor(args.artifact_dir, args.device)
     rows = read_manifest(args.manifest, args.dataset_root)
     normal_val = [r for r in rows if r["split"] == "val" and r["is_anomalous"] == 0]

@@ -34,7 +34,7 @@ def heat_overlay(image: np.ndarray, colored: np.ndarray, alpha: float = 0.45) ->
 def panel(
     image: np.ndarray,
     score_map: np.ndarray,
-    pred_mask: np.ndarray,
+    pred_mask: np.ndarray | None,
     low: float,
     high: float,
     gt_mask: np.ndarray | None = None,
@@ -49,8 +49,9 @@ def panel(
         labels.append("ground truth")
     tiles.append(heat_overlay(image, heatmap(score_map, low, high)))
     labels.append("score heatmap")
-    tiles.append(blend(image, pred_mask, DEFECT_RGB))
-    labels.append("predicted mask")
+    if pred_mask is not None:
+        tiles.append(blend(image, pred_mask, DEFECT_RGB))
+        labels.append("predicted mask")
     resized = []
     for tile, label in zip(tiles, labels, strict=True):
         picture = Image.fromarray(tile).resize((tile_size, tile_size), Image.Resampling.BILINEAR)

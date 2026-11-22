@@ -61,11 +61,15 @@ def file_sha256(path: Path) -> str:
 def git_state() -> dict:
     def run(*args: str) -> str:
         result = subprocess.run(
-            ["git", *args], cwd=REPO_ROOT, capture_output=True, text=True, check=False
+            ["git", "-c", f"safe.directory={REPO_ROOT.as_posix()}", *args],
+            cwd=REPO_ROOT,
+            capture_output=True,
+            text=True,
+            check=True,
         )
         return result.stdout.strip()
 
-    return {"commit": run("rev-parse", "HEAD") or None, "dirty": bool(run("status", "--porcelain"))}
+    return {"commit": run("rev-parse", "HEAD"), "dirty": bool(run("status", "--porcelain"))}
 
 
 def environment() -> dict:

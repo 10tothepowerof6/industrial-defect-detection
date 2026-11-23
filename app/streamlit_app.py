@@ -14,8 +14,8 @@ ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT / "src"))
 
 from industrial_defect_detection.demo import (  # noqa: E402
-    MODEL_NAMES,
     ArtifactInfo,
+    default_comparison,
     find_artifacts,
     ground_truth_mask,
     inspect,
@@ -24,6 +24,7 @@ from industrial_defect_detection.demo import (  # noqa: E402
     sample_images,
 )
 from industrial_defect_detection.inference.loader import load_predictor  # noqa: E402
+from industrial_defect_detection.models.supervised.scoring import ImageTooSmallError  # noqa: E402
 
 ARTIFACT_ROOT = ROOT / "artifacts"
 DATASET_ROOT = ROOT / "datasets"
@@ -69,17 +70,26 @@ TEXT = {
             "`scripts/calibrate.py`."
         ),
         "uncalibrated": "Bỏ qua artifact chưa calibrate",
-        "missing_compare": "Cần cả U-Net và PatchCore đã calibrate cho sản phẩm này để so sánh.",
+        "missing_compare": "Chọn ít nhất 2 mô hình để so sánh.",
         "no_dataset": "Không tìm thấy `datasets/{category}/test`; hãy tải ảnh lên.",
         "need_image": "Chọn hoặc tải một ảnh rồi bấm **Kiểm tra**.",
         "bad_image": "Không đọc được ảnh",
         "load_error": "Không load được mô hình",
+        "predict_error": "Mô hình không xử lý được ảnh này",
+        "image_too_small": (
+            "Ảnh {width}×{height} px quá nhỏ cho mô hình này: điểm ảnh bỏ viền {border} px nên "
+            "mỗi cạnh phải từ {minimum} px trở lên. Mô hình không tự đổi cách tính vì ngưỡng đã "
+            "calibrate cho viền {border} px."
+        ),
         "unet_metal_nut_border": (
             "U-Net metal_nut v1: điểm ảnh bị một pixel ở góc ảnh chi phối nên có thể báo nhầm "
             "ảnh tốt (12/22 trên test). Xem PR #19."
         ),
         "device": "Thiết bị",
         "held_out": "lỗi giữ riêng, chưa thấy khi train",
+        "compare_models": "Mô hình so sánh (chọn từ 2)",
+        "score_whole": "max toàn ảnh",
+        "score_border": "bỏ viền {px} px",
     },
     "en": {
         "title": "Industrial product defect inspection",
@@ -121,17 +131,27 @@ TEXT = {
             "`scripts/calibrate.py`."
         ),
         "uncalibrated": "Skipped uncalibrated artifacts",
-        "missing_compare": "Comparison needs calibrated U-Net and PatchCore for this product.",
+        "missing_compare": "Pick at least 2 models to compare.",
         "no_dataset": "`datasets/{category}/test` not found; please upload an image.",
         "need_image": "Pick or upload an image, then press **Inspect**.",
         "bad_image": "Cannot read the image",
         "load_error": "Cannot load the model",
+        "predict_error": "The model could not process this image",
+        "image_too_small": (
+            "Image {width}×{height} px is too small for this model: its image score ignores a "
+            "{border}-pixel border, so each side must be at least {minimum} px. The score rule is "
+            "not changed automatically because the threshold was calibrated for a {border}-pixel "
+            "border."
+        ),
         "unet_metal_nut_border": (
             "U-Net metal_nut v1: the image score is dominated by one corner pixel, so good parts "
             "may be flagged (12/22 on test). See PR #19."
         ),
         "device": "Device",
         "held_out": "held out, unseen in training",
+        "compare_models": "Models to compare (pick 2 or more)",
+        "score_whole": "whole-map max",
+        "score_border": "{px} px border ignored",
     },
 }
 
@@ -185,14 +205,42 @@ def cached_predictor(artifact_dir: str, device: str):
     return predictor
 
 
+def artifact_label(artifact: ArtifactInfo, t: dict, short: bool = False) -> str:
+    """e.g. 'U-Net (ResNet-18) v2 · bỏ viền 8 px · holdout-crack · <run_id>'."""
+    parts = [artifact.name + (f" {artifact.score_version}" if artifact.score_version else "")]
+    if artifact.score_version:
+        parts.append(
+            t["score_border"].format(px=artifact.score_border)
+            if artifact.score_border
+            else t["score_whole"]
+        )
+    if not short:
+        parts += [artifact.fold, artifact.run_id]
+    return " · ".join(parts)
+
+
 def show_result(info: ArtifactInfo, image, gt_mask, t: dict, device: str) -> None:
     try:
         predictor = cached_predictor(str(info.path), device)
     except Exception as error:  # noqa: BLE001 - show any loading problem to the user
         st.error(f"{t['load_error']}: {info.label} — {error}")
         return
-    prediction, elapsed_ms = inspect(predictor, image)
-    st.subheader(MODEL_NAMES.get(info.model_id, info.model_id))
+    st.subheader(artifact_label(info, t, short=True))
+    try:
+        prediction, elapsed_ms = inspect(predictor, image)
+    except ImageTooSmallError as error:
+        st.error(
+            t["image_too_small"].format(
+                width=error.width,
+                height=error.height,
+                border=error.border,
+                minimum=2 * error.border + 1,
+            )
+        )
+        return
+    except Exception as error:  # noqa: BLE001 - one failing model must not stop the page
+        st.error(f"{t['predict_error']}: {error}")
+        return
     if info.known_issue:
         st.warning(t[info.known_issue])
     if prediction.is_defective:
@@ -221,6 +269,8 @@ def show_result(info: ArtifactInfo, image, gt_mask, t: dict, device: str) -> Non
                 "protocol": meta.get("protocol"),
                 "fold": meta.get("fold"),
                 "run_id": meta.get("run_id"),
+                "image_score": meta.get("score", {}).get("image_score"),
+                "derived_from": meta.get("derived_from", {}).get("run_id"),
                 "device": device,
                 "calibration": {
                     k: meta["calibration"].get(k)
@@ -257,20 +307,29 @@ def main() -> None:
         st.error(t["no_artifacts"])
         return
 
+    def label(artifact: ArtifactInfo) -> str:
+        return artifact_label(artifact, t)
+
     mode = st.sidebar.radio(t["mode"], ["single", "compare"], format_func=lambda m: t[f"mode_{m}"])
     if mode == "single":
-        chosen = [st.sidebar.selectbox(t["model"], artifacts, format_func=lambda a: a.label)]
+        default = default_comparison(artifacts)[0]
+        chosen = [
+            st.sidebar.selectbox(
+                t["model"], artifacts, index=artifacts.index(default), format_func=label
+            )
+        ]
     else:
-        # Latest calibrated run of each model for this product.
-        latest = {}
-        for artifact in artifacts:
-            latest[artifact.model_id] = artifact
-        chosen = [latest[m] for m in ("unet_resnet18", "patchcore") if m in latest]
+        # Default: latest U-Net (v2 if available) against PatchCore; any 2+ may be picked.
+        chosen = st.sidebar.multiselect(
+            t["compare_models"],
+            artifacts,
+            default=default_comparison(artifacts),
+            format_func=label,
+            key=f"compare-{category}",
+        )
         if len(chosen) < 2:
-            st.error(t["missing_compare"])
+            st.warning(t["missing_compare"])
             return
-        for artifact in chosen:
-            st.sidebar.caption(f"• {artifact.label}")
 
     # Defect types the chosen model(s) never saw in training, from the fold "holdout-<defect>".
     held_out = {a.fold.removeprefix("holdout-") for a in chosen if a.fold.startswith("holdout-")}

@@ -17,6 +17,7 @@ from industrial_defect_detection.inference.loader import (
     PREDICTORS,
     calibrated_predict,
 )
+from industrial_defect_detection.models.supervised.scoring import image_score_border
 from industrial_defect_detection.runs import read_json
 from industrial_defect_detection.visualization.overlay import (
     DEFECT_RGB,
@@ -27,8 +28,8 @@ from industrial_defect_detection.visualization.overlay import (
 )
 
 MODEL_NAMES = {"unet_resnet18": "U-Net (ResNet-18)", "patchcore": "PatchCore"}
-# Known limitation shown next to the model: v1 image score is dominated by a border pixel.
-KNOWN_ISSUES = {("unet_resnet18", "metal_nut"): "unet_metal_nut_border"}
+# Known limitation of U-Net metal_nut v1: its whole-map max is a single corner pixel.
+KNOWN_ISSUES = {("unet_resnet18", "metal_nut", 0): "unet_metal_nut_border"}
 
 
 @dataclass(frozen=True)
@@ -40,14 +41,37 @@ class ArtifactInfo:
     fold: str
     run_id: str
     calibrated: bool
+    score_border: int = 0
+
+    @property
+    def name(self) -> str:
+        return MODEL_NAMES.get(self.model_id, self.model_id)
+
+    @property
+    def score_version(self) -> str | None:
+        """v1 (whole-map max) or v2 (border ignored); None for models without versions."""
+        if self.model_id != "unet_resnet18":
+            return None
+        return "v2" if self.score_border else "v1"
 
     @property
     def label(self) -> str:
-        return f"{MODEL_NAMES.get(self.model_id, self.model_id)} · {self.fold} · {self.run_id}"
+        version = f" {self.score_version}" if self.score_version else ""
+        return f"{self.name}{version} · {self.fold} · {self.run_id}"
 
     @property
     def known_issue(self) -> str | None:
-        return KNOWN_ISSUES.get((self.model_id, self.category))
+        return KNOWN_ISSUES.get((self.model_id, self.category, self.score_border))
+
+
+def default_comparison(artifacts: list[ArtifactInfo]) -> list[ArtifactInfo]:
+    """Latest PatchCore and the latest U-Net, preferring v2 (border-aware) over v1."""
+    best = {}
+    for artifact in artifacts:  # sorted by path, so later run IDs come last
+        current = best.get(artifact.model_id)
+        if current is None or artifact.score_border >= current.score_border:
+            best[artifact.model_id] = artifact
+    return [best[m] for m in ("unet_resnet18", "patchcore") if m in best]
 
 
 def find_artifacts(root: Path) -> list[ArtifactInfo]:
@@ -60,6 +84,10 @@ def find_artifacts(root: Path) -> list[ArtifactInfo]:
             continue
         if meta.get("model_id") not in PREDICTORS or meta.get("category") not in CATEGORIES:
             continue
+        try:
+            border = image_score_border(meta)
+        except ValueError:
+            continue
         found.append(
             ArtifactInfo(
                 path=metadata_path.parent,
@@ -69,6 +97,7 @@ def find_artifacts(root: Path) -> list[ArtifactInfo]:
                 fold=meta.get("fold", ""),
                 run_id=meta.get("run_id", metadata_path.parent.name),
                 calibrated=meta.get("status") == "calibrated" and bool(meta.get("calibration")),
+                score_border=border,
             )
         )
     return found

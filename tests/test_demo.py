@@ -11,6 +11,7 @@ import numpy as np
 from PIL import Image
 
 from industrial_defect_detection.demo import (
+    default_comparison,
     display_range,
     find_artifacts,
     ground_truth_mask,
@@ -27,7 +28,7 @@ CRACK_IMAGE = ROOT / "datasets" / "tile" / "test" / "crack" / "000.png"
 SCRATCH_IMAGE = ROOT / "datasets" / "metal_nut" / "test" / "scratch" / "000.png"
 
 
-def write_metadata(root, protocol, model_id, category, run_id, calibrated):
+def write_metadata(root, protocol, model_id, category, run_id, calibrated, border=None):
     folder = root / protocol / model_id / category / run_id
     folder.mkdir(parents=True)
     meta = {
@@ -37,6 +38,8 @@ def write_metadata(root, protocol, model_id, category, run_id, calibrated):
         "fold": "holdout-crack",
         "run_id": run_id,
     }
+    if border is not None:
+        meta["score"] = {"image_score_border_px": border}
     if calibrated:
         meta.update(status="calibrated", calibration={"image_threshold": 1.0})
     (folder / "metadata.json").write_text(json.dumps(meta), encoding="utf-8")
@@ -62,8 +65,24 @@ class CatalogTests(unittest.TestCase):
             write_metadata(root, "c", "unet_resnet18", "metal_nut", "a", True)
             write_metadata(root, "c", "unet_resnet18", "tile", "b", True)
             write_metadata(root, "c", "patchcore", "metal_nut", "c", True)
+            write_metadata(root, "c", "unet_resnet18", "metal_nut", "a-border8", True, 8)
             issues = {a.run_id: a.known_issue for a in find_artifacts(root)}
-        self.assertEqual(issues, {"a": "unet_metal_nut_border", "b": None, "c": None})
+        self.assertEqual(
+            issues, {"a": "unet_metal_nut_border", "a-border8": None, "b": None, "c": None}
+        )
+
+    def test_versions_and_default_comparison_prefer_v2(self):
+        with tempfile.TemporaryDirectory() as folder:
+            root = Path(folder)
+            write_metadata(root, "c", "unet_resnet18", "metal_nut", "a", True)
+            write_metadata(root, "c", "unet_resnet18", "metal_nut", "a-border8", True, 8)
+            write_metadata(root, "c", "patchcore", "metal_nut", "p", True)
+            artifacts = find_artifacts(root)
+        versions = {a.run_id: a.score_version for a in artifacts}
+        self.assertEqual(versions, {"a": "v1", "a-border8": "v2", "p": None})
+        self.assertEqual([a.run_id for a in default_comparison(artifacts)], ["a-border8", "p"])
+        v1_only = [a for a in artifacts if a.run_id != "a-border8"]
+        self.assertEqual([a.run_id for a in default_comparison(v1_only)], ["a", "p"])
 
 
 class ImageTests(unittest.TestCase):
@@ -205,6 +224,66 @@ class StreamlitAppTests(unittest.TestCase):
         self.assertFalse(app.exception)
         verdicts = [e.value for e in (*app.success, *app.error)]
         self.assertTrue(any("PASS" in v or "DEFECT" in v for v in verdicts), verdicts)
+
+    def test_small_image_shows_an_error_and_the_next_model_still_runs(self):
+        # Regression (PR #22 review): a 64x64 image crashed the page with a border=32 U-Net.
+        from streamlit.testing.v1 import AppTest
+
+        tile = [
+            a
+            for a in find_artifacts(ROOT / "artifacts")
+            if a.calibrated and a.category == "tile" and a.model_id == "unet_resnet18"
+        ]
+        v2 = [a for a in tile if a.score_border == 32]
+        v1 = [a for a in tile if a.score_border == 0]
+        if not v2 or not v1:
+            self.skipTest("Needs calibrated U-Net tile v1 and v2 (border 32) artifacts")
+
+        def script(app_path, first, second):
+            import importlib.util
+            from pathlib import Path
+
+            import numpy as np
+
+            spec = importlib.util.spec_from_file_location("app_under_test", app_path)
+            app = importlib.util.module_from_spec(spec)
+            spec.loader.exec_module(app)
+            by_path = {a.path: a for a in app.find_artifacts(app.ARTIFACT_ROOT)}
+            image = np.zeros((64, 64, 3), np.uint8)
+            for path in (first, second):
+                app.show_result(by_path[Path(path)], image, None, app.TEXT["vi"], "cpu")
+
+        app = AppTest.from_function(
+            script,
+            args=(str(ROOT / "app" / "streamlit_app.py"), str(v2[0].path), str(v1[0].path)),
+            default_timeout=180,
+        )
+        app.run()
+        self.assertFalse(app.exception)
+        self.assertEqual(len(app.subheader), 2)
+        errors = [e.value for e in app.error]
+        self.assertTrue(any("64×64" in e and "viền 32 px" in e for e in errors), errors)
+        verdicts = [e.value for e in (*app.success, *app.error)]
+        self.assertTrue(any("PASS" in v or "DEFECT" in v for v in verdicts), verdicts)
+
+    def test_compare_mode_runs_the_default_pair(self):
+        from streamlit.testing.v1 import AppTest
+
+        tile = [
+            a for a in find_artifacts(ROOT / "artifacts") if a.calibrated and a.category == "tile"
+        ]
+        if len({a.model_id for a in tile}) < 2:
+            self.skipTest("Needs calibrated U-Net and PatchCore tile artifacts")
+        app = AppTest.from_file(str(ROOT / "app" / "streamlit_app.py"), default_timeout=180)
+        app.run()
+        app.sidebar.radio[2].set_value("compare").run()  # language, product, mode, source
+        self.assertEqual(len(app.sidebar.multiselect[0].value), 2)
+        app.sidebar.button[0].click().run()
+        self.assertFalse(app.exception)
+        headers = [h.value for h in app.subheader]
+        self.assertEqual(len(headers), 2)
+        self.assertTrue(any(h.startswith("U-Net") for h in headers), headers)
+        self.assertIn("PatchCore", headers)
 
 
 if __name__ == "__main__":

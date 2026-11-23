@@ -12,6 +12,7 @@ from industrial_defect_detection.runs import read_json
 
 from .data import normalize
 from .model import build_unet
+from .scoring import border_max, image_score_border
 from .train import MODEL_ID
 
 
@@ -39,6 +40,7 @@ class UNetPredictor:
         self.model.to(self.device).eval()
         resize = self.metadata["preprocessing"]["resize"]
         self.input_size = (resize["height"], resize["width"])
+        self.border = image_score_border(self.metadata)
 
     @property
     def category(self) -> str:
@@ -64,7 +66,7 @@ class UNetPredictor:
         )
         score_map = probabilities[0, 0].clamp(0, 1).cpu().numpy().astype(np.float32)
         return RawPrediction(
-            image_score=float(score_map.max()),
+            image_score=border_max(score_map, self.border),
             score_map=score_map,
             category=self.category,
             model_id=MODEL_ID,

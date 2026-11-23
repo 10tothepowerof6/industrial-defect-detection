@@ -1,0 +1,116 @@
+{
+  "rule": "On validation images only: for each border b, take the 0.95 quantile of good image scores (q95). Eligible b: q95 within 10% of q95 at the widest candidate border (the border no longer drives good scores) and good-vs-known-defect AUROC not lower than at b=0. Choose the smallest b eligible in every category.",
+  "tolerance": 0.1,
+  "candidates": [
+    0,
+    4,
+    8,
+    16,
+    32
+  ],
+  "data": "validation split of each training manifest; no test image was read",
+  "chosen_border_px": 32,
+  "categories": {
+    "tile": {
+      "artifact_run_id": "20261121-150943-seed42-holdout-crack",
+      "manifest": "splits/seed42/custom_comparison_tile_crack.csv",
+      "manifest_sha256": "5766640a05cdc67468ea12c556554dd73e98a16a00953a3523d9d7d61406c9a3",
+      "val_good_images": 46,
+      "val_defect_images": 12,
+      "eligible": [
+        32
+      ],
+      "table": [
+        {
+          "border": 0,
+          "good_q95": 0.18494288995862007,
+          "good_median": 0.16036703437566757,
+          "defect_min": 0.9999106526374817,
+          "auroc": 1.0
+        },
+        {
+          "border": 4,
+          "good_q95": 0.072766138240695,
+          "good_median": 0.05678039975464344,
+          "defect_min": 0.9999106526374817,
+          "auroc": 1.0
+        },
+        {
+          "border": 8,
+          "good_q95": 0.032733102794736624,
+          "good_median": 0.018806283362209797,
+          "defect_min": 0.9999106526374817,
+          "auroc": 1.0
+        },
+        {
+          "border": 16,
+          "good_q95": 0.030245002824813128,
+          "good_median": 0.017045708373188972,
+          "defect_min": 0.9999106526374817,
+          "auroc": 1.0
+        },
+        {
+          "border": 32,
+          "good_q95": 0.023595986887812614,
+          "good_median": 0.016724498011171818,
+          "defect_min": 0.9999106526374817,
+          "auroc": 1.0
+        }
+      ]
+    },
+    "metal_nut": {
+      "artifact_run_id": "20261121-162901-seed42-holdout-scratch",
+      "manifest": "splits/seed42/custom_comparison_metal_nut_scratch.csv",
+      "manifest_sha256": "3dc5e76351203fd7532c38e4adf1a413b1c816054524119f8f76f43da532f180",
+      "val_good_images": 44,
+      "val_defect_images": 13,
+      "eligible": [
+        4,
+        8,
+        16,
+        32
+      ],
+      "table": [
+        {
+          "border": 0,
+          "good_q95": 0.25598547905683516,
+          "good_median": 0.2549497187137604,
+          "defect_min": 0.9986332654953003,
+          "auroc": 1.0
+        },
+        {
+          "border": 4,
+          "good_q95": 0.06407433860003948,
+          "good_median": 0.050193218514323235,
+          "defect_min": 0.9986332654953003,
+          "auroc": 1.0
+        },
+        {
+          "border": 8,
+          "good_q95": 0.06407433860003948,
+          "good_median": 0.050193218514323235,
+          "defect_min": 0.9986332654953003,
+          "auroc": 1.0
+        },
+        {
+          "border": 16,
+          "good_q95": 0.06407433860003948,
+          "good_median": 0.050193218514323235,
+          "defect_min": 0.9986332654953003,
+          "auroc": 1.0
+        },
+        {
+          "border": 32,
+          "good_q95": 0.06407433860003948,
+          "good_median": 0.050193218514323235,
+          "defect_min": 0.9986332654953003,
+          "auroc": 1.0
+        }
+      ]
+    }
+  },
+  "git": {
+    "commit": "6f615e92b66b27250b15e5ebd5560755ad6d2bc6",
+    "dirty": true
+  }
+}

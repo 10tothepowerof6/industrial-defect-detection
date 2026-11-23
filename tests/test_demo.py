@@ -225,6 +225,47 @@ class StreamlitAppTests(unittest.TestCase):
         verdicts = [e.value for e in (*app.success, *app.error)]
         self.assertTrue(any("PASS" in v or "DEFECT" in v for v in verdicts), verdicts)
 
+    def test_small_image_shows_an_error_and_the_next_model_still_runs(self):
+        # Regression (PR #22 review): a 64x64 image crashed the page with a border=32 U-Net.
+        from streamlit.testing.v1 import AppTest
+
+        tile = [
+            a
+            for a in find_artifacts(ROOT / "artifacts")
+            if a.calibrated and a.category == "tile" and a.model_id == "unet_resnet18"
+        ]
+        v2 = [a for a in tile if a.score_border == 32]
+        v1 = [a for a in tile if a.score_border == 0]
+        if not v2 or not v1:
+            self.skipTest("Needs calibrated U-Net tile v1 and v2 (border 32) artifacts")
+
+        def script(app_path, first, second):
+            import importlib.util
+            from pathlib import Path
+
+            import numpy as np
+
+            spec = importlib.util.spec_from_file_location("app_under_test", app_path)
+            app = importlib.util.module_from_spec(spec)
+            spec.loader.exec_module(app)
+            by_path = {a.path: a for a in app.find_artifacts(app.ARTIFACT_ROOT)}
+            image = np.zeros((64, 64, 3), np.uint8)
+            for path in (first, second):
+                app.show_result(by_path[Path(path)], image, None, app.TEXT["vi"], "cpu")
+
+        app = AppTest.from_function(
+            script,
+            args=(str(ROOT / "app" / "streamlit_app.py"), str(v2[0].path), str(v1[0].path)),
+            default_timeout=180,
+        )
+        app.run()
+        self.assertFalse(app.exception)
+        self.assertEqual(len(app.subheader), 2)
+        errors = [e.value for e in app.error]
+        self.assertTrue(any("64×64" in e and "viền 32 px" in e for e in errors), errors)
+        verdicts = [e.value for e in (*app.success, *app.error)]
+        self.assertTrue(any("PASS" in v or "DEFECT" in v for v in verdicts), verdicts)
+
     def test_compare_mode_runs_the_default_pair(self):
         from streamlit.testing.v1 import AppTest
 

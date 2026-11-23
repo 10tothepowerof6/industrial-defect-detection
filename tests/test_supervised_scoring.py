@@ -8,8 +8,10 @@ from pathlib import Path
 import numpy as np
 
 from industrial_defect_detection.models.supervised.scoring import (
+    ImageTooSmallError,
     border_max,
     border_table,
+    check_image_size,
     choose_border,
     eligible_borders,
     image_score_border,
@@ -52,6 +54,16 @@ class BorderMaxTests(unittest.TestCase):
             border_max(good_map(), -1)
         with self.assertRaises(ValueError):
             border_max(good_map(), 64)  # nothing left of a 128x128 map
+
+    def test_image_size_limit_for_a_border(self):
+        check_image_size(65, 65, 32)  # one pixel left on each axis
+        check_image_size(64, 64, 0)  # v1 has no limit
+        for height, width in ((64, 64), (64, 128), (128, 64), (10, 10)):
+            with self.subTest(size=(height, width)):
+                with self.assertRaises(ImageTooSmallError) as caught:
+                    check_image_size(height, width, 32)
+                self.assertEqual((caught.exception.height, caught.exception.width), (height, width))
+                self.assertIn("exceed 64 px", str(caught.exception))
 
     def test_metadata_border_defaults_to_v1(self):
         self.assertEqual(image_score_border({}), 0)
@@ -155,6 +167,34 @@ class DeriveTests(unittest.TestCase):
         self.assertAlmostEqual(first.image_score, float(first.score_map.max()))
         self.assertAlmostEqual(second.image_score, border_max(second.score_map, 8))
         self.assertEqual(second.run_id, f"{TILE_V1.name}-border8")
+
+    def real_v1_and_v2(self, border):
+        if not TILE_V1.is_dir():
+            self.skipTest("Needs the U-Net tile v1 artifact")
+        copy = Path(self.temporary.name) / "copy" / TILE_V1.name
+        copy.mkdir(parents=True)
+        for name in ("metadata.json", "model.ckpt"):
+            shutil.copy2(TILE_V1 / name, copy / name)
+        return copy, self.derive(copy, border)
+
+    def test_small_images_are_refused_before_inference(self):
+        # Regression (PR #22 review): 64x64 and 64x128 images crashed a border=32 artifact.
+        from industrial_defect_detection.inference.loader import load_predictor
+
+        v1, v2 = self.real_v1_and_v2(32)
+        predictor = load_predictor(v2, "cpu")
+        model = predictor.model
+        predictor.model = None  # any inference attempt would fail with a different error
+        for height, width in ((64, 64), (64, 128)):
+            with self.subTest(size=(height, width)):
+                with self.assertRaises(ImageTooSmallError):
+                    predictor.predict(np.zeros((height, width, 3), np.uint8))
+        predictor.model = model
+        result = predictor.predict(np.zeros((65, 65, 3), np.uint8))
+        self.assertAlmostEqual(result.image_score, border_max(result.score_map, 32))
+        # v1 keeps scoring small images over the whole map.
+        small = load_predictor(v1, "cpu").predict(np.zeros((64, 64, 3), np.uint8))
+        self.assertAlmostEqual(small.image_score, float(small.score_map.max()))
 
 
 if __name__ == "__main__":

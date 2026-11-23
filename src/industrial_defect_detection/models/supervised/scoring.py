@@ -20,6 +20,25 @@ SELECTION_RULE = (
 )
 
 
+class ImageTooSmallError(ValueError):
+    """The image has no pixels left once the artifact's score border is removed."""
+
+    def __init__(self, height: int, width: int, border: int):
+        self.height, self.width, self.border = height, width, border
+        super().__init__(
+            f"Image {width}x{height} px is too small for this artifact: its image score ignores "
+            f"a {border}-pixel border, so width and height must both exceed {2 * border} px"
+        )
+
+
+def check_image_size(height: int, width: int, border: int) -> None:
+    """Raise ImageTooSmallError when removing the border leaves no pixels."""
+    if border < 0:
+        raise ValueError("border must be non-negative")
+    if border and 2 * border >= min(height, width):
+        raise ImageTooSmallError(height, width, border)
+
+
 def image_score_border(metadata: dict) -> int:
     """Border band ignored by the image score; 0 (whole map) for v1 artifacts."""
     border = (metadata.get("score") or {}).get("image_score_border_px", 0)
@@ -30,13 +49,9 @@ def image_score_border(metadata: dict) -> int:
 
 def border_max(score_map: np.ndarray, border: int) -> float:
     """Maximum of the map after removing `border` pixels on every side."""
-    if border < 0:
-        raise ValueError("border must be non-negative")
+    check_image_size(*score_map.shape, border)
     if border == 0:
         return float(score_map.max())
-    height, width = score_map.shape
-    if 2 * border >= min(height, width):
-        raise ValueError(f"border {border} leaves no pixels in a {height}x{width} map")
     return float(score_map[border:-border, border:-border].max())
 
 

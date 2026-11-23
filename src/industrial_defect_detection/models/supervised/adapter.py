@@ -12,7 +12,7 @@ from industrial_defect_detection.runs import read_json
 
 from .data import normalize
 from .model import build_unet
-from .scoring import border_max, image_score_border
+from .scoring import border_max, check_image_size, image_score_border
 from .train import MODEL_ID
 
 
@@ -56,6 +56,9 @@ class UNetPredictor:
         if image.ndim != 3 or image.shape[2] != 3 or image.dtype != np.uint8:
             raise ValueError("Expected a uint8 RGB image with shape [H, W, 3]")
         height, width = image.shape[:2]
+        # Checked before inference: the calibrated threshold only holds with this border, so a
+        # smaller image is refused rather than silently scored with a different rule.
+        check_image_size(height, width, self.border)
         resized = np.asarray(
             Image.fromarray(image).resize(self.input_size[::-1], Image.Resampling.BILINEAR)
         )

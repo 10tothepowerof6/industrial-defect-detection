@@ -24,6 +24,7 @@ from industrial_defect_detection.demo import (  # noqa: E402
     sample_images,
 )
 from industrial_defect_detection.inference.loader import load_predictor  # noqa: E402
+from industrial_defect_detection.models.supervised.scoring import ImageTooSmallError  # noqa: E402
 
 ARTIFACT_ROOT = ROOT / "artifacts"
 DATASET_ROOT = ROOT / "datasets"
@@ -74,6 +75,12 @@ TEXT = {
         "need_image": "Chọn hoặc tải một ảnh rồi bấm **Kiểm tra**.",
         "bad_image": "Không đọc được ảnh",
         "load_error": "Không load được mô hình",
+        "predict_error": "Mô hình không xử lý được ảnh này",
+        "image_too_small": (
+            "Ảnh {width}×{height} px quá nhỏ cho mô hình này: điểm ảnh bỏ viền {border} px nên "
+            "mỗi cạnh phải từ {minimum} px trở lên. Mô hình không tự đổi cách tính vì ngưỡng đã "
+            "calibrate cho viền {border} px."
+        ),
         "unet_metal_nut_border": (
             "U-Net metal_nut v1: điểm ảnh bị một pixel ở góc ảnh chi phối nên có thể báo nhầm "
             "ảnh tốt (12/22 trên test). Xem PR #19."
@@ -129,6 +136,13 @@ TEXT = {
         "need_image": "Pick or upload an image, then press **Inspect**.",
         "bad_image": "Cannot read the image",
         "load_error": "Cannot load the model",
+        "predict_error": "The model could not process this image",
+        "image_too_small": (
+            "Image {width}×{height} px is too small for this model: its image score ignores a "
+            "{border}-pixel border, so each side must be at least {minimum} px. The score rule is "
+            "not changed automatically because the threshold was calibrated for a {border}-pixel "
+            "border."
+        ),
         "unet_metal_nut_border": (
             "U-Net metal_nut v1: the image score is dominated by one corner pixel, so good parts "
             "may be flagged (12/22 on test). See PR #19."
@@ -211,8 +225,22 @@ def show_result(info: ArtifactInfo, image, gt_mask, t: dict, device: str) -> Non
     except Exception as error:  # noqa: BLE001 - show any loading problem to the user
         st.error(f"{t['load_error']}: {info.label} — {error}")
         return
-    prediction, elapsed_ms = inspect(predictor, image)
     st.subheader(artifact_label(info, t, short=True))
+    try:
+        prediction, elapsed_ms = inspect(predictor, image)
+    except ImageTooSmallError as error:
+        st.error(
+            t["image_too_small"].format(
+                width=error.width,
+                height=error.height,
+                border=error.border,
+                minimum=2 * error.border + 1,
+            )
+        )
+        return
+    except Exception as error:  # noqa: BLE001 - one failing model must not stop the page
+        st.error(f"{t['predict_error']}: {error}")
+        return
     if info.known_issue:
         st.warning(t[info.known_issue])
     if prediction.is_defective:
